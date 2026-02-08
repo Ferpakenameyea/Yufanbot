@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Yufanbot.Client.Test/Yufanbot.Client.Test.csproj" />
+  <Project Path="Yufanbot.Client/Yufanbot.Client.csproj" />
+  <Project Path="Yufanbot.Config.Test/Yufanbot.Config.Test.csproj" />
+  <Project Path="Yufanbot.Config/Yufanbot.Config.csproj" />
+</Solution>

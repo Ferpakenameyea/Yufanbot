@@ -1,0 +1,132 @@
+using System.Reflection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Serilog;
+
+namespace Yufanbot.Config;
+
+public abstract class Config<T> where T : Config<T>
+{
+    private readonly ILogger _logger;
+    private readonly IFileReader _fileReader;
+    private readonly IEnvironmentVariableProvider _environmentVariableProvider;
+    private static readonly string _baseFileName = AppDomain.CurrentDomain.BaseDirectory;
+    protected FileInfo ConfigFile => new(Path.Combine(_baseFileName, "config", $"{GetType().Name}_Config.json"));
+
+    public Config(ILogger logger, IFileReader fileReader, IEnvironmentVariableProvider environmentVariableProvider)
+    {
+        _logger = logger;
+        _fileReader = fileReader;
+        _environmentVariableProvider = environmentVariableProvider;
+        ResolveConfiguration();
+    }
+
+    private void ResolveConfiguration()
+    {
+        var entriesEnumerable = 
+                      from p in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.SetProperty)
+                      let att = p.GetCustomAttribute<ConfigEntryAttribute>()
+                      where att != null
+                      select (Property: p, Attribute: att);
+
+        var entriesList = entriesEnumerable.ToList();
+        if (entriesList.Count == 0)
+        {
+            return;
+        }
+
+        string? configJson = null;
+        JToken? configJsonObject = null;
+        
+        try
+        {
+            configJson = _fileReader.ReadAllText(ConfigFile);
+            configJsonObject = configJson != null ? JsonConvert.DeserializeObject<JToken>(configJson) : null;
+        } 
+        catch (IOException e)
+        {
+            _logger.Error("IOException when trying to read from {}", 
+                ConfigFile.Name, e);
+        }
+        catch (JsonException e)
+        {
+            _logger.Error("Json parsing error when trying to parse json configuration in {}", 
+                ConfigFile.Name, e);
+        }
+        
+        if (configJsonObject == null)
+        {
+            _logger.Warning("Nothing present in config file or failed to read it. ({})", ConfigFile.Name);
+        }
+
+        foreach (var entry in entriesList)
+        {
+            ResolveEntry(entry.Property, entry.Attribute, configJsonObject);
+        }
+
+    }
+
+    private void ResolveEntry(PropertyInfo property, ConfigEntryAttribute attribute, JToken? configRoot)
+    {
+        string? valueString = attribute.EntryType switch 
+        {
+            ConfigEntryGetType.FromConfigFile => GetFromConfigFile(configRoot, attribute.Path),
+            ConfigEntryGetType.FromEnvironment => GetFromEnvironment(attribute.Path, property.PropertyType),
+            _ => null
+        };
+
+        if (valueString == null)
+        {
+            if (!attribute.Optional)
+            {
+                _logger.Warning("Required config entry {} remains to be null after configuration resolving, using default. ({})", 
+                    property.Name,
+                    property.GetValue(this));   
+            }
+            return;
+        }
+
+        Type valueType = property.PropertyType;
+        try
+        {
+            object? value = JsonConvert.DeserializeObject(valueString, valueType);
+            property.SetValue(this, value);
+        }
+        catch (JsonException e)
+        {
+            _logger.Error(e.Message);
+        }
+    }
+
+    private string? GetFromEnvironment(string path, Type propertyType)
+    {
+        var raw = _environmentVariableProvider.GetEnvironmentVariable(path);
+        if (propertyType == typeof(string))
+        {
+            return $"\"{raw}\"";
+        }
+        else if (propertyType == typeof(char))
+        {
+            return $"'{raw}'";
+        }
+        return raw;
+    }
+
+    private string? GetFromConfigFile(JToken? configRoot, string path)
+    {
+        if (configRoot == null)
+        {
+            _logger.Error("Cannot get config entry {} from config file because it's not present!", path);
+            return null;
+        }
+
+        string[] paths = path.Split('.');
+        JToken? current = configRoot;
+        foreach (var p in paths)
+        {
+            current = current?[p];
+        }
+
+        return current?.ToString(Formatting.None);
+    }
+}
