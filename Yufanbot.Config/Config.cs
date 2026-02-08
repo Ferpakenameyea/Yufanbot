@@ -5,15 +5,15 @@ using Newtonsoft.Json.Linq;
 
 namespace Yufanbot.Config;
 
-public abstract class Config<T> where T : Config<T>
+public abstract class Config<T> : IConfig where T : Config<T>
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<T> _logger;
     private readonly IFileReader _fileReader;
     private readonly IEnvironmentVariableProvider _environmentVariableProvider;
     private static readonly string _baseFileName = AppDomain.CurrentDomain.BaseDirectory;
     protected FileInfo ConfigFile => new(Path.Combine(_baseFileName, "config", $"{GetType().Name}_Config.json"));
 
-    public Config(ILogger logger, IFileReader fileReader, IEnvironmentVariableProvider environmentVariableProvider)
+    public Config(ILogger<T> logger, IFileReader fileReader, IEnvironmentVariableProvider environmentVariableProvider)
     {
         _logger = logger;
         _fileReader = fileReader;

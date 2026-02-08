@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -8,7 +8,7 @@ namespace Yufanbot.Config.Test;
 public class EnvironmentConfigTests
 {
     private class TestConfig1(
-        ILogger logger,
+        ILogger<TestConfig1> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<TestConfig1>(logger, fileReader, environmentVariableProvider)
     {
@@ -78,7 +78,7 @@ public class EnvironmentConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable("decimal_variable")).Returns("11.5");
 
         var config = new TestConfig1(
-            NullLogger.Instance,
+            NullLogger<TestConfig1>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -102,7 +102,7 @@ public class EnvironmentConfigTests
     }
 
     private class TestConfig2(
-        ILogger logger,
+        ILogger<TestConfig2> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<TestConfig2>(logger, fileReader, environmentVariableProvider)
     {
@@ -131,7 +131,7 @@ public class EnvironmentConfigTests
         """);
 
         var config = new TestConfig2(
-            NullLogger.Instance,
+            NullLogger<TestConfig2>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -145,7 +145,7 @@ public class EnvironmentConfigTests
     }
 
     private class TestConfig3(
-        ILogger logger,
+        ILogger<TestConfig3> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<TestConfig3>(logger, fileReader, environmentVariableProvider)
     {
@@ -179,7 +179,7 @@ public class EnvironmentConfigTests
         """);
 
         var config = new TestConfig3(
-            NullLogger.Instance,
+            NullLogger<TestConfig3>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );

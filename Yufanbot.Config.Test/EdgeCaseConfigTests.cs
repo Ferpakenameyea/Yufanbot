@@ -8,7 +8,7 @@ namespace Yufanbot.Config.Test;
 public class EdgeCaseConfigTests
 {
     private class EmptyConfig(
-        ILogger logger,
+        ILogger<EmptyConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<EmptyConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -24,7 +24,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new EmptyConfig(
-            NullLogger.Instance,
+            NullLogger<EmptyConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -33,7 +33,7 @@ public class EdgeCaseConfigTests
     }
 
     private class RequiredConfig(
-        ILogger logger,
+        ILogger<RequiredConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<RequiredConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -57,7 +57,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new RequiredConfig(
-            NullLogger.Instance,
+            NullLogger<RequiredConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -85,7 +85,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new RequiredConfig(
-            NullLogger.Instance,
+            NullLogger<RequiredConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -99,7 +99,7 @@ public class EdgeCaseConfigTests
     }
 
     private class OptionalConfig(
-        ILogger logger,
+        ILogger<OptionalConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<OptionalConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -126,7 +126,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new OptionalConfig(
-            NullLogger.Instance,
+            NullLogger<OptionalConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -159,7 +159,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new OptionalConfig(
-            NullLogger.Instance,
+            NullLogger<OptionalConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -175,7 +175,7 @@ public class EdgeCaseConfigTests
     }
 
     private class NullableConfig(
-        ILogger logger,
+        ILogger<NullableConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<NullableConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -204,7 +204,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NullableConfig(
-            NullLogger.Instance,
+            NullLogger<NullableConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -235,7 +235,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NullableConfig(
-            NullLogger.Instance,
+            NullLogger<NullableConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -250,7 +250,7 @@ public class EdgeCaseConfigTests
     }
 
     private class InvalidTypeConfig(
-        ILogger logger,
+        ILogger<InvalidTypeConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<InvalidTypeConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -272,7 +272,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new InvalidTypeConfig(
-            NullLogger.Instance,
+            NullLogger<InvalidTypeConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -281,7 +281,7 @@ public class EdgeCaseConfigTests
     }
 
     private class EmptyFileConfig(
-        ILogger logger,
+        ILogger<EmptyFileConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<EmptyFileConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -299,7 +299,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new EmptyFileConfig(
-            NullLogger.Instance,
+            NullLogger<EmptyFileConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -308,7 +308,7 @@ public class EdgeCaseConfigTests
     }
 
     private class IOExceptionConfig(
-        ILogger logger,
+        ILogger<IOExceptionConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<IOExceptionConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -326,7 +326,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new IOExceptionConfig(
-            NullLogger.Instance,
+            NullLogger<IOExceptionConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -335,7 +335,7 @@ public class EdgeCaseConfigTests
     }
 
     private class InvalidJsonConfig(
-        ILogger logger,
+        ILogger<InvalidJsonConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<InvalidJsonConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -353,7 +353,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new InvalidJsonConfig(
-            NullLogger.Instance,
+            NullLogger<InvalidJsonConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -362,7 +362,7 @@ public class EdgeCaseConfigTests
     }
 
     private class NestedPathConfig(
-        ILogger logger,
+        ILogger<NestedPathConfig> logger,
         IFileReader fileReader,
         IEnvironmentVariableProvider environmentVariableProvider) : Config<NestedPathConfig>(logger, fileReader, environmentVariableProvider)
     {
@@ -386,7 +386,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NestedPathConfig(
-            NullLogger.Instance,
+            NullLogger<NestedPathConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -412,7 +412,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NestedPathConfig(
-            NullLogger.Instance,
+            NullLogger<NestedPathConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -438,7 +438,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NestedPathConfig(
-            NullLogger.Instance,
+            NullLogger<NestedPathConfig>.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
