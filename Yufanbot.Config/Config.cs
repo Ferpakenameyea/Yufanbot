@@ -1,7 +1,7 @@
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Yufanbot.Config;
 
@@ -45,18 +45,18 @@ public abstract class Config<T> where T : Config<T>
         } 
         catch (IOException e)
         {
-            _logger.Error("IOException when trying to read from {}", 
-                ConfigFile.Name, e);
+            _logger.LogError(e, "IOException when trying to read from {}", 
+                ConfigFile.Name);
         }
         catch (JsonException e)
         {
-            _logger.Error("Json parsing error when trying to parse json configuration in {}", 
-                ConfigFile.Name, e);
+            _logger.LogError(e, "Json parsing error when trying to parse json configuration in {}", 
+                ConfigFile.Name);
         }
         
         if (configJsonObject == null)
         {
-            _logger.Warning("Nothing present in config file or failed to read it. ({})", ConfigFile.Name);
+            _logger.LogWarning("Nothing present in config file or failed to read it. ({})", ConfigFile.Name);
         }
 
         foreach (var entry in entriesList)
@@ -79,7 +79,7 @@ public abstract class Config<T> where T : Config<T>
         {
             if (!attribute.Optional)
             {
-                _logger.Warning("Required config entry {} remains to be null after configuration resolving, using default. ({})", 
+                _logger.LogWarning("Required config entry {} remains to be null after configuration resolving, using default. ({})", 
                     property.Name,
                     property.GetValue(this));   
             }
@@ -94,7 +94,7 @@ public abstract class Config<T> where T : Config<T>
         }
         catch (JsonException e)
         {
-            _logger.Error(e.Message);
+            _logger.LogError(e, "Error parsing configuration value");
         }
     }
 
@@ -116,7 +116,7 @@ public abstract class Config<T> where T : Config<T>
     {
         if (configRoot == null)
         {
-            _logger.Error("Cannot get config entry {} from config file because it's not present!", path);
+            _logger.LogError("Cannot get config entry {} from config file because it's not present!", path);
             return null;
         }
 

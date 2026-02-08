@@ -1,6 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Serilog;
-using Serilog.Core;
 
 namespace Yufanbot.Config.Test;
 
@@ -24,7 +24,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new EmptyConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -57,7 +57,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new RequiredConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -85,7 +85,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new RequiredConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -126,7 +126,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new OptionalConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -159,7 +159,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new OptionalConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -204,7 +204,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NullableConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -235,7 +235,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NullableConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -272,7 +272,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new InvalidTypeConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -299,7 +299,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new EmptyFileConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -326,7 +326,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new IOExceptionConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -353,7 +353,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new InvalidJsonConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -386,7 +386,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NestedPathConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -412,7 +412,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NestedPathConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -438,7 +438,7 @@ public class EdgeCaseConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new NestedPathConfig(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );

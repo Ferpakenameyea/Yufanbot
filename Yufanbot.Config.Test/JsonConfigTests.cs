@@ -1,6 +1,6 @@
-﻿using Moq;
-using Serilog;
-using Serilog.Core;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace Yufanbot.Config.Test;
 
@@ -82,7 +82,7 @@ public class JsonConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
         
         var config = new TestConfig1(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -137,7 +137,7 @@ public class JsonConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new TestConfig2(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
@@ -187,7 +187,7 @@ public class JsonConfigTests
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
         var config = new TestConfig3(
-            Logger.None,
+            NullLogger.Instance,
             fileReaderMock.Object,
             environmentMock.Object
         );
