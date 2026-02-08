@@ -45,18 +45,18 @@ public abstract class Config<T> : IConfig where T : Config<T>
         } 
         catch (IOException e)
         {
-            _logger.LogError(e, "IOException when trying to read from {}", 
+            _logger.LogError(e, "IOException when trying to read from {name}", 
                 ConfigFile.Name);
         }
         catch (JsonException e)
         {
-            _logger.LogError(e, "Json parsing error when trying to parse json configuration in {}", 
+            _logger.LogError(e, "Json parsing error when trying to parse json configuration in {name}", 
                 ConfigFile.Name);
         }
         
         if (configJsonObject == null)
         {
-            _logger.LogWarning("Nothing present in config file or failed to read it. ({})", ConfigFile.Name);
+            _logger.LogWarning("Nothing present in config file or failed to read it. ({name})", ConfigFile.Name);
         }
 
         foreach (var entry in entriesList)
@@ -79,7 +79,7 @@ public abstract class Config<T> : IConfig where T : Config<T>
         {
             if (!attribute.Optional)
             {
-                _logger.LogWarning("Required config entry {} remains to be null after configuration resolving, using default. ({})", 
+                _logger.LogWarning("Required config entry {name} remains to be null after configuration resolving, using default. ({value})", 
                     property.Name,
                     property.GetValue(this));   
             }
@@ -116,7 +116,7 @@ public abstract class Config<T> : IConfig where T : Config<T>
     {
         if (configRoot == null)
         {
-            _logger.LogError("Cannot get config entry {} from config file because it's not present!", path);
+            _logger.LogError("Cannot get config entry {entryname} from config file because it's not present!", path);
             return null;
         }
 
