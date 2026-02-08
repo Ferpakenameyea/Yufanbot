@@ -3,7 +3,7 @@ using Yufanbot.Config;
 
 namespace Yufanbot.Client.Config;
 
-public class CoreConfig(ILogger logger, IFileReader fileReader, IEnvironmentVariableProvider environmentVariableProvider) : 
+public class CoreConfig(ILogger<CoreConfig> logger, IFileReader fileReader, IEnvironmentVariableProvider environmentVariableProvider) : 
     Config<CoreConfig>(logger, fileReader, environmentVariableProvider)
 {
     [ConfigEntry("napcat.ip", ConfigEntryGetType.FromConfigFile)]
