@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Yufanbot.Client;
 using Yufanbot.Config;
+using Yufanbot.Plugin;
 
 ServiceCollection services = new();
 
@@ -20,6 +21,7 @@ services.AddLogging(builder =>
 services.AddSingleton<IFileReader, FileReader>();
 services.AddSingleton<IEnvironmentVariableProvider, EnvironmentVariableProvider>();
 services.AddSingleton<IConfigProvider, ConfigProvider>();
+services.AddSingleton<IPluginCompiler, PluginCompiler>();
 
 var application = new Application(services.BuildServiceProvider());
 await application.RunAsync();

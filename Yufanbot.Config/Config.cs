@@ -116,7 +116,7 @@ public abstract class Config<T> : IConfig where T : Config<T>
     {
         if (configRoot == null)
         {
-            _logger.LogError("Cannot get config entry {entryname} from config file because it's not present!", path);
+            _logger.LogWarning("Cannot get config entry {entryname} from config file because it's not present!", path);
             return null;
         }
 

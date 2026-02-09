@@ -17,4 +17,7 @@ public class CoreConfig(ILogger<CoreConfig> logger, IFileReader fileReader, IEnv
 
     [ConfigEntry("napcat.self_id", ConfigEntryGetType.FromConfigFile)]
     public long SelfId { get; set; } = 0;
+
+    [ConfigEntry("plugin.directory", ConfigEntryGetType.FromConfigFile)]
+    public string PluginDirectory { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
 }

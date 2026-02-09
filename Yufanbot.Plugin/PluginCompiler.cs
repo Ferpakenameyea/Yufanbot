@@ -2,8 +2,8 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Reflection;
+using System.Reflection.PortableExecutable;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +15,7 @@ using Yufanbot.Plugin.Common;
 
 namespace Yufanbot.Plugin;
 
-public sealed class PluginCompiler
+public sealed class PluginCompiler : IPluginCompiler
 {
     private readonly string cacheRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".plugincache");
     private readonly ILogger<PluginCompiler> _logger;
@@ -35,14 +35,14 @@ public sealed class PluginCompiler
             .Select(s => new SourceRepository(new PackageSource(s), providers))
             .ToList()
             .AsReadOnly();
-        
+
         var cacheDirectory = new DirectoryInfo(cacheRoot);
         if (!cacheDirectory.Exists)
         {
             try
             {
                 cacheDirectory.Create();
-            } 
+            }
             catch (IOException e)
             {
                 _logger.LogCritical(e, "IOException when trying to create cache directory.");
@@ -50,7 +50,7 @@ public sealed class PluginCompiler
             }
             return;
         }
-        
+
         foreach (var f in cacheDirectory.GetFiles())
         {
             // clean cache
@@ -65,7 +65,7 @@ public sealed class PluginCompiler
         }
     }
 
-    public async Task<IPlugin?> CompilePluginAsync(string path)
+    public async Task<Common.YFPlugin?> CompilePluginAsync(string path)
     {
         FileInfo fileInfo = new(path);
 
@@ -76,16 +76,16 @@ public sealed class PluginCompiler
         }
 
         var suffixSeparatorIndex = fileInfo.Name.LastIndexOf('.');
-        if (suffixSeparatorIndex == -1 || 
+        if (suffixSeparatorIndex == -1 ||
             fileInfo.Name[suffixSeparatorIndex..] != IPlugin.PluginSuffix)
         {
-            _logger.LogError("Given file {name} is not a bot plugin, bot plugin needs to end with {suffix}", 
+            _logger.LogError("Given file {name} is not a bot plugin, bot plugin needs to end with {suffix}",
                 fileInfo.Name,
                 IPlugin.PluginSuffix);
             return null;
         }
 
-        _logger.LogInformation("Loading plugin {}.", fileInfo.Name);
+        _logger.LogInformation("Loading plugin {name}.", fileInfo.Name);
 
         using var workSpace = new WorkSpace(cacheRoot);
 
@@ -95,7 +95,7 @@ public sealed class PluginCompiler
                 path,
                 workSpace.DirectoryInfo.FullName
             );
-        } 
+        }
         catch (Exception e)
         {
             _logger.LogError(e, "Error extracting plugin at {path}", path);
@@ -103,12 +103,12 @@ public sealed class PluginCompiler
         }
 
         PluginMeta? meta = GetMeta(workSpace);
-        
+
         if (meta == null)
         {
             _logger.LogError("Plugin META_INF not found for {name}, skipping loading.", fileInfo.Name);
             return null;
-        
+
         }
         NugetResult<string[]> dependenciesResolveResult = await ResolveDependencies(meta);
         if (!dependenciesResolveResult.Success)
@@ -142,9 +142,9 @@ public sealed class PluginCompiler
             }
 
             IPlugin instance = (ActivatorUtilities.CreateInstance(_serviceProvider, entry) as IPlugin)!;
-            
-            return instance;
-        } 
+
+            return new(Entry: instance, Meta: meta);
+        }
         catch (InvalidOperationException)
         {
             _logger.LogError(
@@ -193,7 +193,7 @@ public sealed class PluginCompiler
         return new([.. list]);
     }
 
-    private bool Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo, string[] dependencies, [NotNullWhen(true)] out Assembly? assembly)
+    private bool Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo, string[] nugetDependenciesPaths, [NotNullWhen(true)] out Assembly? assembly)
     {
         var sources = workSpace.DirectoryInfo.GetFiles("*.cs", SearchOption.AllDirectories);
         var syntaxTrees = sources.Select(file =>
@@ -203,14 +203,7 @@ public sealed class PluginCompiler
             )
         );
 
-        var nugetReferences = dependencies
-            .Select(dll => MetadataReference.CreateFromFile(dll));
-
-        var references = AppDomain.CurrentDomain
-            .GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Select(a => MetadataReference.CreateFromFile(a.Location))
-            .Concat(nugetReferences);
+        var references = GetAllReferences(nugetDependenciesPaths);
 
         var compilation = CSharpCompilation.Create(
             assemblyName: meta.Id,
@@ -255,6 +248,51 @@ public sealed class PluginCompiler
         {
             _logger.LogError(e, "Exception occured when trying to load meta");
             return null;
+        }
+    }
+
+    private static List<MetadataReference> GetAllReferences(IEnumerable<string> nugetDlls)
+    {
+        var references = new List<MetadataReference>();
+
+        var loadedAssemblies = AppDomain.CurrentDomain
+            .GetAssemblies()
+            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && IsManagedAssembly(a.Location))
+            .Select(a => a.Location)
+            .ToList();
+
+        references.AddRange(loadedAssemblies.Select(path => MetadataReference.CreateFromFile(path)));
+
+        string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+        var bclDlls = Directory.EnumerateFiles(runtimeDir, "*.dll")
+            .Where(f => !loadedAssemblies.Contains(f, StringComparer.OrdinalIgnoreCase) && IsManagedAssembly(f));
+
+        references.AddRange(bclDlls.Select(path => MetadataReference.CreateFromFile(path)));
+
+        if (nugetDlls != null)
+        {
+            references.AddRange(nugetDlls.Where(File.Exists).Select(path => MetadataReference.CreateFromFile(path)));
+        }
+
+        references = references
+            .GroupBy(r => r.Display, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+
+        return references;
+    }
+
+    private static bool IsManagedAssembly(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var peReader = new PEReader(stream);
+            return peReader.HasMetadata;
+        }
+        catch
+        {
+            return false;
         }
     }
 }
