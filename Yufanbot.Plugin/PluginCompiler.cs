@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NapPlana.Core.Bot;
 using NuGet.Configuration;
 using NuGet.Protocol.Core.Types;
 using Yufanbot.Config;
@@ -259,6 +260,8 @@ public sealed class PluginCompiler : IPluginCompiler
             .GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location) && IsManagedAssembly(a.Location))
             .Select(a => a.Location)
+            // NOTE: Actually this is not necessary for actual run but this will let tests pass, so why not?
+            .Append(typeof(NapBot).Assembly.Location)
             .ToList();
 
         references.AddRange(loadedAssemblies.Select(path => MetadataReference.CreateFromFile(path)));

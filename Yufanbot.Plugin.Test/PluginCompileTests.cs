@@ -115,6 +115,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -124,7 +125,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<HelloworldPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("Hello, world!");
                 }
@@ -146,6 +147,7 @@ public class PluginCompileTests
             metaInfo: null,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -155,7 +157,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<HelloworldPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("Hello, world!");
                 }
@@ -184,6 +186,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             namespace Yufanbot.Plugin.NoEntry;
 
             public class NotAPlugin
@@ -217,6 +220,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -226,7 +230,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<FirstPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("First plugin initialized");
                 }
@@ -236,7 +240,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<SecondPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("Second plugin initialized");
                 }
@@ -276,6 +280,7 @@ public class PluginCompileTests
             }
             """,
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -285,7 +290,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<MultiSourcePlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation(Helper.GetMessage());
                 }
@@ -314,6 +319,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -323,7 +329,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<InvalidJsonPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -353,6 +359,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Yufanbot.Plugin.Common;
 
             namespace Yufanbot.Plugin.SyntaxError;
@@ -361,7 +368,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<SyntaxErrorPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This has a syntax error"
                 }
@@ -392,6 +399,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Yufanbot.Plugin.Common;
 
             namespace Yufanbot.Plugin.WrongExt;
@@ -400,7 +408,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<WrongExtensionPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -475,6 +483,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Yufanbot.Plugin.Common;
 
             namespace Yufanbot.Plugin.MissingFields;
@@ -483,7 +492,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<MissingFieldsPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -514,6 +523,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Yufanbot.Plugin.Common;
 
             namespace Yufanbot.Plugin.NoExt;
@@ -522,7 +532,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<NoExtensionPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -553,6 +563,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Newtonsoft.Json;
             using Yufanbot.Plugin.Common;
 
@@ -562,7 +573,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<JsonParserPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     var data = new { message = "Hello from Newtonsoft.Json!" };
                     string json = JsonConvert.SerializeObject(data);
@@ -595,6 +606,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Newtonsoft.Json;
             using Yufanbot.Plugin.Common;
 
@@ -604,7 +616,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<JsonParserLatestPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     var data = new { message = "Using latest Newtonsoft.Json!" };
                     string json = JsonConvert.SerializeObject(data);
@@ -636,6 +648,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -645,7 +658,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<InvalidDependencyPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -675,6 +688,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -684,7 +698,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<InvalidVersionPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -714,6 +728,7 @@ public class PluginCompileTests
             """,
             sources:
             """
+            using NapPlana.Core.Bot;
             using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
@@ -723,7 +738,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<InvalidFormatPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
@@ -754,6 +769,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Newtonsoft.Json;
             using Serilog;
             using Yufanbot.Plugin.Common;
@@ -764,7 +780,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<MultiDependencyPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     var data = new { message = "Multiple dependencies work!" };
                     string json = JsonConvert.SerializeObject(data);
@@ -798,6 +814,7 @@ public class PluginCompileTests
             sources:
             """
             using Microsoft.Extensions.Logging;
+            using NapPlana.Core.Bot;
             using Newtonsoft.Json;
             using Yufanbot.Plugin.Common;
 
@@ -807,7 +824,7 @@ public class PluginCompileTests
             {
                 private readonly ILogger<OneInvalidDependencyPlugin> _logger = logger;
 
-                public void OnInitialize()
+                public void OnInitialize(NapBot bot)
                 {
                     _logger.LogInformation("This should not be reached");
                 }
