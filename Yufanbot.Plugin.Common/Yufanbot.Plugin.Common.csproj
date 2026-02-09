@@ -15,7 +15,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
-    <PackageReference Include="Yufanbot.Config" Version="1.0.0" />
     <PackageReference Include="NapPlana.NET" Version="0.2.6" />
   </ItemGroup>
 
