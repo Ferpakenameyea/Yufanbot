@@ -33,7 +33,6 @@ public sealed class Application
                 .SetPort(_coreConfig.NapcatPort)
                 .SetToken(_coreConfig.NapcatToken)
                 .Build();
-            LoadPlugins();
             _logger.LogInformation("{count} plugins were loaded.", _plugins.Count);
             if (_plugins.Count == 0)
             {
@@ -56,7 +55,7 @@ public sealed class Application
         }
     }
 
-    private void LoadPlugins()
+    private async Task LoadPluginsAsync()
     {
         DirectoryInfo directoryInfo = new(_coreConfig.PluginDirectory);
         if (!directoryInfo.Exists)
@@ -66,7 +65,7 @@ public sealed class Application
         }
         var extensionFiles = directoryInfo.GetFiles().Where(file => file.Suffix() == ".yf");
 
-        Parallel.ForEach(extensionFiles, async file =>
+        await Parallel.ForEachAsync(extensionFiles, async (file, _) =>
         {
             var plugin = await _pluginCompiler.CompilePluginAsync(file.FullName);
             if (plugin != null)
@@ -80,6 +79,7 @@ public sealed class Application
 
     public async Task RunAsync()
     {
+        await LoadPluginsAsync();
         await _bot.StartAsync();
         foreach (var plugin in _plugins)
         {
