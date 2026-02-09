@@ -89,7 +89,40 @@ public abstract class Config<T> : IConfig where T : Config<T>
         Type valueType = property.PropertyType;
         try
         {
-            object? value = JsonConvert.DeserializeObject(valueString, valueType);
+            object? value;
+            if (valueType.IsEnum)
+            {
+                if (valueString.Length < 2 || valueString[0] != '\"' || valueString[^1] != '\"')
+                {
+                    _logger.LogError(
+                        "Expected a string type (wrapped with \") " + 
+                        "to parse to enum ({type}) for property {propertyName}, but given: {actual}",
+                        
+                        valueType.FullName,
+                        property.Name,
+                        valueString);
+                    return;
+                }
+
+                var caseMatchAttribute = property.GetCustomAttribute<CaseMatchAttribute>();
+                
+                bool ignoreCase = caseMatchAttribute == null || caseMatchAttribute.Mode == CaseMatchMode.IgnoreCase;
+                
+                if (!Enum.TryParse(valueType, valueString[1..^1], ignoreCase, out value))
+                {
+                    _logger.LogError(
+                        "Failed to parse {string} to enum value type {typename}(ignore case: {ignorecase})",
+                        valueString,
+                        valueType.FullName,
+                        ignoreCase
+                    );
+                    return;
+                }
+            }
+            else 
+            {
+                value = JsonConvert.DeserializeObject(valueString, valueType);
+            }
             property.SetValue(this, value);
         }
         catch (JsonException e)
@@ -101,7 +134,7 @@ public abstract class Config<T> : IConfig where T : Config<T>
     private string? GetFromEnvironment(string path, Type propertyType)
     {
         var raw = _environmentVariableProvider.GetEnvironmentVariable(path);
-        if (propertyType == typeof(string))
+        if (propertyType == typeof(string) || propertyType.IsEnum)
         {
             return $"\"{raw}\"";
         }
