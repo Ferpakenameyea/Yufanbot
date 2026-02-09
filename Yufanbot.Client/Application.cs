@@ -33,20 +33,6 @@ public sealed class Application
                 .SetPort(_coreConfig.NapcatPort)
                 .SetToken(_coreConfig.NapcatToken)
                 .Build();
-            _logger.LogInformation("{count} plugins were loaded.", _plugins.Count);
-            if (_plugins.Count == 0)
-            {
-                _logger.LogWarning("You're running a yufan bot without any plugin, no actions will be done.");
-            }
-            else
-            {
-                foreach (var plugin in _plugins)
-                {
-                    _logger.LogInformation("- {pluginname} {pluginversion}", 
-                        plugin.Meta.Name, 
-                        plugin.Meta.Version);
-                }
-            }
         } 
         catch (Exception e)
         {
@@ -80,6 +66,20 @@ public sealed class Application
     public async Task RunAsync()
     {
         await LoadPluginsAsync();
+        _logger.LogInformation("{count} plugins were loaded.", _plugins.Count);
+        if (_plugins.Count == 0)
+        {
+            _logger.LogWarning("You're running a yufan bot without any plugin, no actions will be done.");
+        }
+        else
+        {
+            foreach (var plugin in _plugins)
+            {
+                _logger.LogInformation("- {pluginname} {pluginversion}", 
+                    plugin.Meta.Name, 
+                    plugin.Meta.Version);
+            }
+        }
         await _bot.StartAsync();
         foreach (var plugin in _plugins)
         {
