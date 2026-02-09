@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NapPlana.Core.Bot;
+using Newtonsoft.Json;
 using Yufanbot.Client.Config;
 using Yufanbot.Config;
 using Yufanbot.Plugin;

@@ -136,11 +136,11 @@ public abstract class Config<T> : IConfig where T : Config<T>
         var raw = _environmentVariableProvider.GetEnvironmentVariable(path);
         if (propertyType == typeof(string) || propertyType.IsEnum)
         {
-            return $"\"{raw}\"";
+            return JsonConvert.SerializeObject(raw);
         }
         else if (propertyType == typeof(char))
         {
-            return $"'{raw}'";
+            return JsonConvert.SerializeObject(raw);
         }
         return raw;
     }
