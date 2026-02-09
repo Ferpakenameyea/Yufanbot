@@ -4,6 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <PackageId>Yufanbot.Config</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>MCDaxia</Authors>
+    <Description>Yufanbot plugin config API</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>

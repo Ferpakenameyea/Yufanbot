@@ -83,8 +83,8 @@ public sealed class Application
         await _bot.StartAsync();
         foreach (var plugin in _plugins)
         {
-            plugin.Entry.OnInitialize();
-            await plugin.Entry.OnInitializeAsync();
+            plugin.Entry.OnInitialize(_bot);
+            await plugin.Entry.OnInitializeAsync(_bot);
         }
         
         while (true)
