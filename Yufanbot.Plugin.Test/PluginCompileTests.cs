@@ -2,6 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Yufanbot.Config;
 
 namespace Yufanbot.Plugin.Test;
 
@@ -17,6 +19,29 @@ public class PluginCompileTests
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
+        });
+        services.AddSingleton(provider =>
+        {
+            var mock = new Mock<IConfigProvider>();
+            mock.Setup(m => m.Resolve<PluginCompilerConfig>())
+                .Returns(() =>
+                {
+                    Mock<IFileReader> reader = new();
+                    reader.Setup(reader => reader.ReadAllText(It.IsAny<FileInfo>()))
+                        .Returns("");
+
+                    Mock<IEnvironmentVariableProvider> envProvider = new();
+                    envProvider.Setup(provider => provider.GetEnvironmentVariable(It.IsAny<string>()))
+                        .Returns(default(string));
+
+                    return new PluginCompilerConfig(
+                        NullLogger<PluginCompilerConfig>.Instance,
+                        reader.Object,
+                        envProvider.Object
+                    );
+                });
+                
+            return mock.Object;
         });
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -71,7 +96,7 @@ public class PluginCompileTests
     }
 
     [Test]
-    public void TestCompilePlugin_ShouldSuccess()
+    public async Task TestCompilePlugin_ShouldSuccess()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -105,12 +130,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Not.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_NoMetaInf_ShouldReturnNull()
+    public async Task TestCompilePlugin_NoMetaInf_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -136,12 +161,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_NoIPluginEntry_ShouldReturnNull()
+    public async Task TestCompilePlugin_NoIPluginEntry_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -169,12 +194,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_MultipleIPluginEntries_ShouldReturnNull()
+    public async Task TestCompilePlugin_MultipleIPluginEntries_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -217,12 +242,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_MultipleSourceFiles_ShouldSuccess()
+    public async Task TestCompilePlugin_MultipleSourceFiles_ShouldSuccess()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -266,12 +291,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Not.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_InvalidJsonInMetaInf_ShouldReturnNull()
+    public async Task TestCompilePlugin_InvalidJsonInMetaInf_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -304,12 +329,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_CSharpSyntaxError_ShouldReturnNull()
+    public async Task TestCompilePlugin_CSharpSyntaxError_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -342,12 +367,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_WrongFileExtension_ShouldReturnNull()
+    public async Task TestCompilePlugin_WrongFileExtension_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -381,12 +406,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_EmptyPlugin_ShouldReturnNull()
+    public async Task TestCompilePlugin_EmptyPlugin_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -402,24 +427,24 @@ public class PluginCompileTests
                 "version": "1.0.0"
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_FileNotExist_ShouldReturnNull()
+    public async Task TestCompilePlugin_FileNotExist_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
             _serviceProvider
         );
         string pluginPath = Path.Combine(".", "nonexistent.yf");
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_InvalidZipFormat_ShouldReturnNull()
+    public async Task TestCompilePlugin_InvalidZipFormat_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -428,12 +453,12 @@ public class PluginCompileTests
         using WorkSpace outputWorkspace = new(".");
         string invalidZipPath = Path.Combine(outputWorkspace.DirectoryInfo.FullName, "invalid.yf");
         File.WriteAllText(invalidZipPath, "This is not a valid zip file");
-        var plugin = pluginCompiler.CompilePlugin(invalidZipPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(invalidZipPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_MetaDataMissingRequiredFields_ShouldReturnNull()
+    public async Task TestCompilePlugin_MetaDataMissingRequiredFields_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -464,12 +489,12 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public void TestCompilePlugin_NoFileExtension_ShouldReturnNull()
+    public async Task TestCompilePlugin_NoFileExtension_ShouldReturnNull()
     {
         PluginCompiler pluginCompiler = new(
             NullLogger<PluginCompiler>.Instance,
@@ -503,9 +528,293 @@ public class PluginCompileTests
                 }
             }
             """);
-        var plugin = pluginCompiler.CompilePlugin(pluginPath);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
+    [Test]
+    public async Task TestCompilePlugin_WithValidNewtonsoftJsonDependency_ShouldSuccess()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "jsonparser",
+                "name": "JsonParserPlugin",
+                "description": "Plugin that uses Newtonsoft.Json",
+                "version": "1.0.0",
+                "nuget_dependencies": ["Newtonsoft.Json:13.0.3"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Newtonsoft.Json;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.JsonParser;
+
+            public class JsonParserPlugin(ILogger<JsonParserPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<JsonParserPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    var data = new { message = "Hello from Newtonsoft.Json!" };
+                    string json = JsonConvert.SerializeObject(data);
+                    _logger.LogInformation("JSON serialized: {json}", json);
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task TestCompilePlugin_WithLatestVersionDependency_ShouldSuccess()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "jsonparserlatest",
+                "name": "JsonParserLatestPlugin",
+                "description": "Plugin that uses latest Newtonsoft.Json",
+                "version": "1.0.0",
+                "nuget_dependencies": ["Newtonsoft.Json:latest"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Newtonsoft.Json;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.JsonParserLatest;
+
+            public class JsonParserLatestPlugin(ILogger<JsonParserLatestPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<JsonParserLatestPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    var data = new { message = "Using latest Newtonsoft.Json!" };
+                    string json = JsonConvert.SerializeObject(data);
+                    _logger.LogInformation("JSON: {json}", json);
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task TestCompilePlugin_WithInvalidPackageNameDependency_ShouldReturnNull()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "invaliddep",
+                "name": "InvalidDependencyPlugin",
+                "description": "Plugin with invalid package dependency",
+                "version": "1.0.0",
+                "nuget_dependencies": ["ThisPackageDoesNotExistForSure:1.0.0"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.InvalidDep;
+
+            public class InvalidDependencyPlugin(ILogger<InvalidDependencyPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<InvalidDependencyPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    _logger.LogInformation("This should not be reached");
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestCompilePlugin_WithInvalidVersionDependency_ShouldReturnNull()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "invalidver",
+                "name": "InvalidVersionPlugin",
+                "description": "Plugin with invalid version dependency",
+                "version": "1.0.0",
+                "nuget_dependencies": ["Newtonsoft.Json:notarealversion999"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.InvalidVer;
+
+            public class InvalidVersionPlugin(ILogger<InvalidVersionPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<InvalidVersionPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    _logger.LogInformation("This should not be reached");
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestCompilePlugin_WithInvalidDependencyStringFormat_ShouldReturnNull()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "invalidformat",
+                "name": "InvalidFormatPlugin",
+                "description": "Plugin with invalid dependency string format",
+                "version": "1.0.0",
+                "nuget_dependencies": ["Newtonsoft.Json:13.0.3:extra"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.InvalidFormat;
+
+            public class InvalidFormatPlugin(ILogger<InvalidFormatPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<InvalidFormatPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    _logger.LogInformation("This should not be reached");
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestCompilePlugin_WithMultipleDependencies_ShouldSuccess()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "multidep",
+                "name": "MultiDependencyPlugin",
+                "description": "Plugin with multiple dependencies",
+                "version": "1.0.0",
+                "nuget_dependencies": ["Newtonsoft.Json:13.0.3", "Serilog:latest"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Newtonsoft.Json;
+            using Serilog;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.MultiDep;
+
+            public class MultiDependencyPlugin(ILogger<MultiDependencyPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<MultiDependencyPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    var data = new { message = "Multiple dependencies work!" };
+                    string json = JsonConvert.SerializeObject(data);
+                    _logger.LogInformation("Serialized: {json}", json);
+                    Log.Information("Serilog also works!");
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task TestCompilePlugin_OneInvalidAmongMultipleDependencies_ShouldReturnNull()
+    {
+        PluginCompiler pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
+        using WorkSpace outputWorkspace = new(".");
+        string pluginPath = CreatePlugin(outputWorkspace,
+            metaInfo: """
+            {
+                "id": "oneinvalid",
+                "name": "OneInvalidDependencyPlugin",
+                "description": "Plugin with one invalid dependency among valid ones",
+                "version": "1.0.0",
+                "nuget_dependencies": ["Newtonsoft.Json:13.0.3", "ThisPackageDoesNotExist:1.0.0"]
+            }
+            """,
+            sources:
+            """
+            using Microsoft.Extensions.Logging;
+            using Newtonsoft.Json;
+            using Yufanbot.Plugin.Common;
+
+            namespace Yufanbot.Plugin.OneInvalid;
+
+            public class OneInvalidDependencyPlugin(ILogger<OneInvalidDependencyPlugin> logger) : IPlugin
+            {
+                private readonly ILogger<OneInvalidDependencyPlugin> _logger = logger;
+
+                public void OnInitialize()
+                {
+                    _logger.LogInformation("This should not be reached");
+                }
+            }
+            """);
+        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
 
 }

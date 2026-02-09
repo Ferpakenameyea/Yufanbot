@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using System.Reflection;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +21,8 @@ public sealed class PluginCompiler
     private readonly ILogger<PluginCompiler> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly PluginCompilerConfig _config;
+    private readonly ReadOnlyCollection<SourceRepository> _nugetRepositories;
+
     public PluginCompiler(
         ILogger<PluginCompiler> logger,
         IServiceProvider serviceProvider)
@@ -26,6 +30,12 @@ public sealed class PluginCompiler
         _serviceProvider = serviceProvider;
         _logger = logger;
         _config = _serviceProvider.GetRequiredService<IConfigProvider>().Resolve<PluginCompilerConfig>();
+        var providers = Repository.Provider.GetCoreV3();
+        _nugetRepositories = _config.NugetSources
+            .Select(s => new SourceRepository(new PackageSource(s), providers))
+            .ToList()
+            .AsReadOnly();
+        
         var cacheDirectory = new DirectoryInfo(cacheRoot);
         if (!cacheDirectory.Exists)
         {
@@ -55,7 +65,7 @@ public sealed class PluginCompiler
         }
     }
 
-    public IPlugin? CompilePlugin(string path)
+    public async Task<IPlugin?> CompilePluginAsync(string path)
     {
         FileInfo fileInfo = new(path);
 
@@ -98,13 +108,24 @@ public sealed class PluginCompiler
         {
             _logger.LogError("Plugin META_INF not found for {name}, skipping loading.", fileInfo.Name);
             return null;
+        
         }
+        NugetResult<string[]> dependenciesResolveResult = await ResolveDependencies(meta);
+        if (!dependenciesResolveResult.Success)
+        {
+            _logger.LogError("Failed to resolve nuget packages for {id}({path})",
+                meta.Id,
+                fileInfo.FullName);
+            return null;
+        }
+        string[] dependenciesPaths = dependenciesResolveResult.Value!;
 
-        if (!Compile(workSpace, meta, fileInfo, out Assembly? assembly))
+        if (!Compile(workSpace, meta, fileInfo, dependenciesPaths, out Assembly? assembly))
         {
             _logger.LogError("Failed to load {}.", fileInfo.Name);
             return null;
         }
+
 
         Type? entry = null;
         try
@@ -144,7 +165,35 @@ public sealed class PluginCompiler
         }
     }
 
-    private bool Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo, [NotNullWhen(true)] out Assembly? assembly)
+    private async Task<NugetResult<string[]>> ResolveDependencies(PluginMeta meta)
+    {
+        if (meta.NugetDependencies.Count == 0)
+        {
+            return new([]);
+        }
+
+        List<string> list = [];
+        foreach (var dependency in meta.NugetDependencies)
+        {
+            var result = await Nuget.DownloadPackageFromSources(dependency,
+                _nugetRepositories);
+
+            if (!result.Success)
+            {
+                _logger.LogError("Failed to resolve dependency for {id} ({dependency}) ({reason})",
+                    meta.Id,
+                    dependency,
+                    result.Status);
+                return new(result.Status);
+            }
+
+            list.AddRange(result.Value!);
+        }
+
+        return new([.. list]);
+    }
+
+    private bool Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo, string[] dependencies, [NotNullWhen(true)] out Assembly? assembly)
     {
         var sources = workSpace.DirectoryInfo.GetFiles("*.cs", SearchOption.AllDirectories);
         var syntaxTrees = sources.Select(file =>
@@ -154,10 +203,14 @@ public sealed class PluginCompiler
             )
         );
 
+        var nugetReferences = dependencies
+            .Select(dll => MetadataReference.CreateFromFile(dll));
+
         var references = AppDomain.CurrentDomain
             .GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Select(a => MetadataReference.CreateFromFile(a.Location));
+            .Select(a => MetadataReference.CreateFromFile(a.Location))
+            .Concat(nugetReferences);
 
         var compilation = CSharpCompilation.Create(
             assemblyName: meta.Id,
