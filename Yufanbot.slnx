@@ -2,4 +2,7 @@
   <Project Path="Yufanbot.Client/Yufanbot.Client.csproj" />
   <Project Path="Yufanbot.Config.Test/Yufanbot.Config.Test.csproj" />
   <Project Path="Yufanbot.Config/Yufanbot.Config.csproj" />
+  <Project Path="Yufanbot.Plugin.Common/Yufanbot.Plugin.Common.csproj" />
+  <Project Path="Yufanbot.Plugin.Test/Yufanbot.Plugin.Test.csproj" />
+  <Project Path="Yufanbot.Plugin/Yufanbot.Plugin.csproj" />
 </Solution>

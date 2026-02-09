@@ -37,8 +37,8 @@ public class ConfigProviderTests
         var environmentMock = new Mock<IEnvironmentVariableProvider>();
         environmentMock.Setup(m => m.GetEnvironmentVariable(It.IsAny<string>())).Returns("");
 
-        services.AddSingleton<IFileReader>(fileReaderMock.Object);
-        services.AddSingleton<IEnvironmentVariableProvider>(environmentMock.Object);
+        services.AddSingleton(fileReaderMock.Object);
+        services.AddSingleton(environmentMock.Object);
         services.AddLogging();
 
         return services.BuildServiceProvider();
