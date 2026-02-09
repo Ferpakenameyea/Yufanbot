@@ -136,7 +136,7 @@ public sealed class PluginCompiler : IPluginCompiler
             if (entry == null)
             {
                 _logger.LogError(
-                    "Plugin {name}(file: {filename}) doesn't have an entry. (An entry is a class thta implements IPlugin)",
+                    "Plugin {name}(file: {filename}) doesn't have an entry. (An entry is a class that implements IPlugin)",
                         meta.Id,
                         fileInfo.Name);
                 return null;

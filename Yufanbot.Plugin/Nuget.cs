@@ -68,7 +68,7 @@ internal static class Nuget
                     continue;
                 }
 
-                version = versions.Max();
+                version = versions.Max()!;
             }
             
             var resource = await repo.GetResourceAsync<FindPackageByIdResource>();
@@ -89,7 +89,7 @@ internal static class Nuget
             }
             
             string packagesFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-            string packageFolder = Path.Combine(packagesFolder, name.ToLower(), nugetVersionString);
+            string packageFolder = Path.Combine(packagesFolder, name.ToLower(), version.ToString());
             Directory.CreateDirectory(packageFolder);
 
             string nupkgPath = Path.Combine(packageFolder, $"{name}.{nugetVersionString}.nupkg");
