@@ -123,7 +123,7 @@ public sealed class PluginCompiler : IPluginCompiler
 
         if (!Compile(workSpace, meta, fileInfo, dependenciesPaths, out Assembly? assembly))
         {
-            _logger.LogError("Failed to load {}.", fileInfo.Name);
+            _logger.LogError("Failed to load {pluginname}.", fileInfo.Name);
             return null;
         }
 

@@ -84,8 +84,16 @@ public sealed class Application
         await _bot.StartAsync();
         foreach (var plugin in _plugins)
         {
-            plugin.Entry.OnInitialize(_bot);
-            await plugin.Entry.OnInitializeAsync(_bot);
+            try
+            {
+                plugin.Entry.OnInitialize(_bot);
+                await plugin.Entry.OnInitializeAsync(_bot);
+            }
+            catch (Exception e)
+            {
+                _logger.LogCritical(e, "Plugin {plugin} initialization failed!", plugin.Meta.Id);
+                throw;
+            }
         }
         
         while (true)
