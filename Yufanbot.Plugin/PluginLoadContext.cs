@@ -41,11 +41,14 @@ internal class PluginLoadContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
-        var loaded = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => a.GetName().FullName == assemblyName.FullName);
-        if (loaded != null) 
+        if (assemblyName.Name != null && SharedDlls.Contains(assemblyName.Name))
         {
-            return loaded; 
+            var loaded = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().FullName == assemblyName.FullName);
+            if (loaded != null) 
+            {
+                return loaded; 
+            }
         }
 
         if (_privateDllBytes.TryGetValue(assemblyName.Name!, out var bytes))
