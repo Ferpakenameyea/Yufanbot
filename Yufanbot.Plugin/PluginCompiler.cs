@@ -4,13 +4,13 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Reflection.PortableExecutable;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
 using NapPlana.Core.Bot;
-using NuGet.Configuration;
-using NuGet.Protocol.Core.Types;
 using Yufanbot.Config;
 using Yufanbot.Plugin.Common;
 
@@ -22,7 +22,6 @@ public sealed class PluginCompiler : IPluginCompiler
     private readonly ILogger<PluginCompiler> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly PluginCompilerConfig _config;
-    private readonly ReadOnlyCollection<SourceRepository> _nugetRepositories;
 
     public PluginCompiler(
         ILogger<PluginCompiler> logger,
@@ -31,11 +30,6 @@ public sealed class PluginCompiler : IPluginCompiler
         _serviceProvider = serviceProvider;
         _logger = logger;
         _config = _serviceProvider.GetRequiredService<IConfigProvider>().Resolve<PluginCompilerConfig>();
-        var providers = Repository.Provider.GetCoreV3();
-        _nugetRepositories = _config.NugetSources
-            .Select(s => new SourceRepository(new PackageSource(s), providers))
-            .ToList()
-            .AsReadOnly();
 
         var cacheDirectory = new DirectoryInfo(cacheRoot);
         if (!cacheDirectory.Exists)
@@ -66,7 +60,7 @@ public sealed class PluginCompiler : IPluginCompiler
         }
     }
 
-    public async Task<Common.YFPlugin?> CompilePluginAsync(string path)
+    public async Task<YFPlugin?> CompilePluginAsync(string path)
     {
         FileInfo fileInfo = new(path);
 
@@ -102,31 +96,37 @@ public sealed class PluginCompiler : IPluginCompiler
             _logger.LogError(e, "Error extracting plugin at {path}", path);
             return null;
         }
-
+        string[] cleanTargets = [
+            Path.Combine(workSpace.DirectoryInfo.FullName, "bin"),
+            Path.Combine(workSpace.DirectoryInfo.FullName, "obj")
+        ];
+        foreach (var cleanTarget in cleanTargets)
+        {
+            if (Directory.Exists(cleanTarget))
+            {
+                Directory.Delete(cleanTarget, recursive: true);
+            }
+        }
         PluginMeta? meta = GetMeta(workSpace);
 
         if (meta == null)
         {
             _logger.LogError("Plugin META_INF not found for {name}, skipping loading.", fileInfo.Name);
             return null;
-
         }
-        NugetResult<string[]> dependenciesResolveResult = await ResolveDependencies(meta);
-        if (!dependenciesResolveResult.Success)
+
+        if (string.IsNullOrWhiteSpace(meta.Id))
         {
-            _logger.LogError("Failed to resolve nuget packages for {id}({path})",
-                meta.Id,
-                fileInfo.FullName);
+            _logger.LogError("Plugin {name} meta is incomplete or invalid (missing required field 'id' or it is blank.)", fileInfo.Name);
             return null;
         }
-        string[] dependenciesPaths = dependenciesResolveResult.Value!;
 
-        if (!Compile(workSpace, meta, fileInfo, dependenciesPaths, out Assembly? assembly))
+        (var success, var assembly) = await Compile(workSpace, meta, fileInfo);
+        if (!success || assembly == null)
         {
             _logger.LogError("Failed to load {pluginname}.", fileInfo.Name);
             return null;
         }
-
 
         Type? entry = null;
         try
@@ -146,10 +146,10 @@ public sealed class PluginCompiler : IPluginCompiler
 
             return new(Entry: instance, Meta: meta);
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException e)
         {
             _logger.LogError(
-                "Found more than one entry in plugin {name}(file: {filename}). Please ensure there is only one entry.",
+                e, "Found more than one entry in plugin {name}(file: {filename}). Please ensure there is only one entry.",
                 meta.Id,
                 fileInfo.Name
             );
@@ -166,70 +166,37 @@ public sealed class PluginCompiler : IPluginCompiler
         }
     }
 
-    private async Task<NugetResult<string[]>> ResolveDependencies(PluginMeta meta)
+    private async Task<(bool success, Assembly? assembly)> Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo)
     {
-        if (meta.NugetDependencies.Count == 0)
+        FileInfo? csprojFile;
+        try
         {
-            return new([]);
+            csprojFile = workSpace.DirectoryInfo.GetFiles().Single(f => f.Extension == ".csproj");
+        }
+        catch (InvalidOperationException)
+        {
+            _logger.LogError("Found none or multiple .csproj file in when compiling {name}({id}) (plugin at path {filepath})",
+                meta.Name,
+                meta.Id,
+                pluginFileInfo.FullName);
+            return (false, null);
+        }
+        
+        var compileTuple = await CSharpLanguage.BuildDllAsync(csprojFile.FullName, _logger);
+        if (compileTuple == null)
+        {
+            _logger.LogError("Failed to compile dll artifact.");
+            return (false, null);
         }
 
-        List<string> list = [];
-        foreach (var dependency in meta.NugetDependencies)
-        {
-            var result = await Nuget.DownloadPackageFromSources(dependency,
-                _nugetRepositories);
+        (var rootPath, var entryName) = compileTuple.Value;
 
-            if (!result.Success)
-            {
-                _logger.LogError("Failed to resolve dependency for {id} ({dependency}) ({reason})",
-                    meta.Id,
-                    dependency,
-                    result.Status);
-                return new(result.Status);
-            }
+        var context = new PluginLoadContext(rootPath, entryName);
+        var mainDllPath = Path.Combine(rootPath, entryName);
 
-            list.AddRange(result.Value!);
-        }
+        Assembly assembly = context.LoadEntryAssembly(mainDllPath);
 
-        return new([.. list]);
-    }
-
-    private bool Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo, string[] nugetDependenciesPaths, [NotNullWhen(true)] out Assembly? assembly)
-    {
-        var sources = workSpace.DirectoryInfo.GetFiles("*.cs", SearchOption.AllDirectories);
-        var syntaxTrees = sources.Select(file =>
-            CSharpSyntaxTree.ParseText(
-                File.ReadAllText(file.FullName),
-                path: file.FullName
-            )
-        );
-
-        var references = GetAllReferences(nugetDependenciesPaths);
-
-        var compilation = CSharpCompilation.Create(
-            assemblyName: meta.Id,
-            syntaxTrees: syntaxTrees,
-            references: references,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        );
-
-        using var ms = new MemoryStream();
-        var result = compilation.Emit(ms);
-        if (!result.Success)
-        {
-            var errors = result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error);
-            _logger.LogError("Failed to load {name}: Compilation error", pluginFileInfo.Name);
-            foreach (var e in errors)
-            {
-                _logger.LogError("{errorMessage}", e.GetMessage());
-            }
-            assembly = null;
-            return false;
-        }
-
-        ms.Seek(0, SeekOrigin.Begin);
-        assembly = Assembly.Load(ms.ToArray());
-        return true;
+        return (true, assembly);
     }
 
     private PluginMeta? GetMeta(WorkSpace workSpace)

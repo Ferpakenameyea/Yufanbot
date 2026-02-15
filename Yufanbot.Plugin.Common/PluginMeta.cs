@@ -18,7 +18,4 @@ public sealed class PluginMeta
     
     [JsonPropertyName("authors")]
     public List<string> Authors { get; set; } = [];
-
-    [JsonPropertyName("nuget_dependencies")]
-    public List<string> NugetDependencies { get; set; } = [];
 }

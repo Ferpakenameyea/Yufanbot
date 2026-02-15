@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
     <PackageReference Include="NapPlana.NET" Version="0.2.6" />
     <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3" />
   </ItemGroup>
 
   <ItemGroup>

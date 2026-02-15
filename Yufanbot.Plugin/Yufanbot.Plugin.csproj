@@ -10,9 +10,6 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
     <PackageReference Include="NapPlana.NET" Version="0.2.6" />
-    <PackageReference Include="NuGet.Configuration" Version="7.0.1" />
-    <PackageReference Include="NuGet.Packaging" Version="7.0.1" />
-    <PackageReference Include="NuGet.Protocol" Version="7.0.1" />
   </ItemGroup>
 
   <ItemGroup>

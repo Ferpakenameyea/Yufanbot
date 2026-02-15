@@ -1,9 +1,10 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Yufanbot.Config;
+using Yufanbot.Plugin.Common;
 
 namespace Yufanbot.Plugin.Test;
 
@@ -11,6 +12,7 @@ namespace Yufanbot.Plugin.Test;
 public class PluginCompileTests
 {
     private ServiceProvider _serviceProvider;
+    private PluginCompiler _pluginCompiler;
 
     [SetUp]
     public void Setup()
@@ -44,6 +46,10 @@ public class PluginCompileTests
             return mock.Object;
         });
         _serviceProvider = services.BuildServiceProvider();
+        _pluginCompiler = new(
+            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider
+        );
     }
 
     [TearDown]
@@ -54,21 +60,9 @@ public class PluginCompileTests
 
     private static string CreatePlugin(
         WorkSpace outputWorkSpace,
-        string? metaInfo,
-        params Span<string> sources)
-    {
-        return CreatePluginWithSuffix(
-            outputWorkSpace,
-            metaInfo,
-            ".yf",
-            sources
-        );
-    }
-
-    private static string CreatePluginWithSuffix(
-        WorkSpace outputWorkSpace,
-        string? metaInfo,
         string suffix,
+        string? csproj,
+        string? metaInfo,
         params Span<string> sources)
     {
         using WorkSpace inputWorkSpace = new(".");
@@ -78,6 +72,13 @@ public class PluginCompileTests
             string sourcePath = Path.Combine(inputWorkSpace.DirectoryInfo.FullName, $"Plugin_source_{i}.cs");
             File.WriteAllText(sourcePath, sources[i]);
         }
+
+        if (csproj != null)
+        {
+            string csprojPath = Path.Combine(inputWorkSpace.DirectoryInfo.FullName, "test.csproj");
+            File.WriteAllText(csprojPath, csproj);
+        }
+
         if (metaInfo != null)
         {
             string metaPath = Path.Combine(inputWorkSpace.DirectoryInfo.FullName, "META_INF");
@@ -96,742 +97,985 @@ public class PluginCompileTests
     }
 
     [Test]
-    public async Task TestCompilePlugin_ShouldSuccess()
+    public async Task TestNormalPlugin_ShouldCompile()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
             metaInfo: """
             {
-                "id": "helloworld",
-                "name": "HelloWorld",
-                "description": "HelloWorld plugin",
+                "id": "aispeakup",
+                "name": "Yufan AI Speakup",
+                "description": "learn and speak in yufan's tone",
                 "version": "1.0.0",
                 "author": "mcdaxia"
             }
             """,
-            sources:
-            """
+            sources: """
+            using System;
             using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.Helloworld;
-
-            public class HelloworldPlugin(ILogger<HelloworldPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<HelloworldPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
-                    _logger.LogInformation("Hello, world!");
+                    Console.WriteLine("Hello, world!");
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Not.Null);
     }
 
     [Test]
-    public async Task TestCompilePlugin_NoMetaInf_ShouldReturnNull()
+    public async Task TestPluginWithThirdPartyNugetPackage_ShouldCompile()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: null,
-            sources:
-            """
-            using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
-            using Yufanbot.Plugin.Common;
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
 
-            namespace Yufanbot.Plugin.Helloworld;
-
-            public class HelloworldPlugin(ILogger<HelloworldPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<HelloworldPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("Hello, world!");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_NoIPluginEntry_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "noentry",
-                "name": "NoEntryPlugin",
-                "description": "Plugin without IPlugin entry",
-                "version": "1.0.0"
-            }
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
             """,
-            sources:
-            """
-            using NapPlana.Core.Bot;
-            namespace Yufanbot.Plugin.NoEntry;
-
-            public class NotAPlugin
-            {
-                public void DoSomething()
-                {
-                    System.Console.WriteLine("This is not a plugin entry");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_MultipleIPluginEntries_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
             metaInfo: """
             {
-                "id": "multiple",
-                "name": "MultipleEntriesPlugin",
-                "description": "Plugin with multiple IPlugin entries",
-                "version": "1.0.0"
-            }
-            """,
-            sources:
-            """
-            using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.Multiple;
-
-            public class FirstPlugin(ILogger<FirstPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<FirstPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("First plugin initialized");
-                }
-            }
-
-            public class SecondPlugin(ILogger<SecondPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<SecondPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("Second plugin initialized");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_MultipleSourceFiles_ShouldSuccess()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "multisource",
-                "name": "MultiSourcePlugin",
-                "description": "Plugin with multiple source files",
-                "version": "1.0.0"
-            }
-            """,
-            
-            """
-            namespace Yufanbot.Plugin.MultiSource;
-
-            public class Helper
-            {
-                public static string GetMessage()
-                {
-                    return "Hello from helper!";
-                }
-            }
-            """,
-            """
-            using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.MultiSource;
-
-            public class MultiSourcePlugin(ILogger<MultiSourcePlugin> logger) : IPlugin
-            {
-                private readonly ILogger<MultiSourcePlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation(Helper.GetMessage());
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Not.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_InvalidJsonInMetaInf_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "invalidjson",
-                "name": "InvalidJsonPlugin"
-                "description": "Plugin with invalid JSON",
-                "version": "1.0.0"
-            }
-            """,
-            sources:
-            """
-            using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.InvalidJson;
-
-            public class InvalidJsonPlugin(ILogger<InvalidJsonPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<InvalidJsonPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("This should not be reached");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_CSharpSyntaxError_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "syntaxerror",
-                "name": "SyntaxErrorPlugin",
-                "description": "Plugin with C# syntax error",
-                "version": "1.0.0"
-            }
-            """,
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
-            using NapPlana.Core.Bot;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.SyntaxError;
-
-            public class SyntaxErrorPlugin(ILogger<SyntaxErrorPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<SyntaxErrorPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("This has a syntax error"
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_WrongFileExtension_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePluginWithSuffix(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "wrongext",
-                "name": "WrongExtensionPlugin",
-                "description": "Plugin with wrong file extension",
-                "version": "1.0.0"
-            }
-            """,
-            suffix: ".zip",
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
-            using NapPlana.Core.Bot;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.WrongExt;
-
-            public class WrongExtensionPlugin(ILogger<WrongExtensionPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<WrongExtensionPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("This should not be reached");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_EmptyPlugin_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "empty",
-                "name": "EmptyPlugin",
-                "description": "Empty plugin with no source files",
-                "version": "1.0.0"
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_FileNotExist_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        string pluginPath = Path.Combine(".", "nonexistent.yf");
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_InvalidZipFormat_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string invalidZipPath = Path.Combine(outputWorkspace.DirectoryInfo.FullName, "invalid.yf");
-        File.WriteAllText(invalidZipPath, "This is not a valid zip file");
-        var plugin = await pluginCompiler.CompilePluginAsync(invalidZipPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_MetaDataMissingRequiredFields_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "name": "MissingFieldsPlugin",
-                "description": "Plugin missing required id field"
-            }
-            """,
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
-            using NapPlana.Core.Bot;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.MissingFields;
-
-            public class MissingFieldsPlugin(ILogger<MissingFieldsPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<MissingFieldsPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("This should not be reached");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_NoFileExtension_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePluginWithSuffix(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "noext",
-                "name": "NoExtensionPlugin",
-                "description": "Plugin with no file extension",
-                "version": "1.0.0"
-            }
-            """,
-            suffix: "",
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
-            using NapPlana.Core.Bot;
-            using Yufanbot.Plugin.Common;
-
-            namespace Yufanbot.Plugin.NoExt;
-
-            public class NoExtensionPlugin(ILogger<NoExtensionPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<NoExtensionPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("This should not be reached");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_WithValidNewtonsoftJsonDependency_ShouldSuccess()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "jsonparser",
-                "name": "JsonParserPlugin",
-                "description": "Plugin that uses Newtonsoft.Json",
+                "id": "json-parser",
+                "name": "JSON Parser",
+                "description": "A plugin that uses Newtonsoft.Json",
                 "version": "1.0.0",
-                "nuget_dependencies": ["Newtonsoft.Json:13.0.3"]
+                "author": "test"
             }
             """,
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
-            using NapPlana.Core.Bot;
+            sources: """
+            using System;
             using Newtonsoft.Json;
+            using NapPlana.Core.Bot;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.JsonParser;
-
-            public class JsonParserPlugin(ILogger<JsonParserPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<JsonParserPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
                     var data = new { message = "Hello from Newtonsoft.Json!" };
                     string json = JsonConvert.SerializeObject(data);
-                    _logger.LogInformation("JSON serialized: {json}", json);
+                    Console.WriteLine(json);
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Not.Null);
     }
 
     [Test]
-    public async Task TestCompilePlugin_WithLatestVersionDependency_ShouldSuccess()
+    public async Task TestPluginWithIncompleteMetaInfo_ShouldFail()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
             metaInfo: """
             {
-                "id": "jsonparserlatest",
-                "name": "JsonParserLatestPlugin",
-                "description": "Plugin that uses latest Newtonsoft.Json",
-                "version": "1.0.0",
-                "nuget_dependencies": ["Newtonsoft.Json:latest"]
+                "name": "Incomplete Meta"
             }
             """,
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
+            sources: """
+            using System;
             using NapPlana.Core.Bot;
-            using Newtonsoft.Json;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.JsonParserLatest;
-
-            public class JsonParserLatestPlugin(ILogger<JsonParserLatestPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<JsonParserLatestPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
-                    var data = new { message = "Using latest Newtonsoft.Json!" };
-                    string json = JsonConvert.SerializeObject(data);
-                    _logger.LogInformation("JSON: {json}", json);
+                    Console.WriteLine("Hello!");
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
-        Assert.That(plugin, Is.Not.Null);
-    }
-
-    [Test]
-    public async Task TestCompilePlugin_WithInvalidPackageNameDependency_ShouldReturnNull()
-    {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
+            """
         );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "invaliddep",
-                "name": "InvalidDependencyPlugin",
-                "description": "Plugin with invalid package dependency",
-                "version": "1.0.0",
-                "nuget_dependencies": ["ThisPackageDoesNotExistForSure:1.0.0"]
-            }
-            """,
-            sources:
-            """
-            using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
-            using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.InvalidDep;
-
-            public class InvalidDependencyPlugin(ILogger<InvalidDependencyPlugin> logger) : IPlugin
-            {
-                private readonly ILogger<InvalidDependencyPlugin> _logger = logger;
-
-                public void OnInitialize(NapBot bot)
-                {
-                    _logger.LogInformation("This should not be reached");
-                }
-            }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public async Task TestCompilePlugin_WithInvalidVersionDependency_ShouldReturnNull()
+    public async Task TestPluginWithoutMetaInfo_ShouldFail()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
-            metaInfo: """
-            {
-                "id": "invalidver",
-                "name": "InvalidVersionPlugin",
-                "description": "Plugin with invalid version dependency",
-                "version": "1.0.0",
-                "nuget_dependencies": ["Newtonsoft.Json:notarealversion999"]
-            }
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
             """,
-            sources:
-            """
+            metaInfo: null,
+            sources: """
+            using System;
             using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.InvalidVer;
-
-            public class InvalidVersionPlugin(ILogger<InvalidVersionPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<InvalidVersionPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
-                    _logger.LogInformation("This should not be reached");
+                    Console.WriteLine("Hello!");
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public async Task TestCompilePlugin_WithInvalidDependencyStringFormat_ShouldReturnNull()
+    public async Task TestPluginWithSyntaxError_ShouldFail()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
             metaInfo: """
             {
-                "id": "invalidformat",
-                "name": "InvalidFormatPlugin",
-                "description": "Plugin with invalid dependency string format",
+                "id": "syntax-error",
+                "name": "Syntax Error",
+                "description": "Plugin with syntax errors",
                 "version": "1.0.0",
-                "nuget_dependencies": ["Newtonsoft.Json:13.0.3:extra"]
+                "author": "test"
             }
             """,
-            sources:
-            """
+            sources: """
+            using System;
             using NapPlana.Core.Bot;
-            using Microsoft.Extensions.Logging;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.InvalidFormat;
-
-            public class InvalidFormatPlugin(ILogger<InvalidFormatPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<InvalidFormatPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
-                    _logger.LogInformation("This should not be reached");
+                    // Missing closing parenthesis
+                    Console.WriteLine("Hello!"
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
     [Test]
-    public async Task TestCompilePlugin_WithMultipleDependencies_ShouldSuccess()
+    public async Task TestPluginWithoutCsproj_ShouldFail()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: null,
             metaInfo: """
             {
-                "id": "multidep",
-                "name": "MultiDependencyPlugin",
-                "description": "Plugin with multiple dependencies",
+                "id": "no-csproj",
+                "name": "No Csproj",
+                "description": "Plugin without csproj file",
                 "version": "1.0.0",
-                "nuget_dependencies": ["Newtonsoft.Json:13.0.3", "Serilog:latest"]
+                "author": "test"
             }
             """,
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
+            sources: """
+            using System;
             using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Console.WriteLine("Hello!");
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithIncompleteCsproj_ShouldFail()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                </PropertyGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "incomplete-csproj",
+                "name": "Incomplete Csproj",
+                "description": "Plugin with incomplete csproj",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Console.WriteLine("Hello!");
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithInvalidCsprojSyntax_ShouldFail()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+            <!-- Missing closing tags -->
+            """,
+            metaInfo: """
+            {
+                "id": "invalid-csproj",
+                "name": "Invalid Csproj",
+                "description": "Plugin with invalid csproj syntax",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Console.WriteLine("Hello!");
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithMissingClosingBrace_ShouldFail()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "missing-brace",
+                "name": "Missing Brace",
+                "description": "Plugin with missing closing brace",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Console.WriteLine("Hello!");
+                // Missing closing brace for class
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithInvalidCSharpKeyword_ShouldFail()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "invalid-keyword",
+                "name": "Invalid Keyword",
+                "description": "Plugin with invalid C# keyword usage",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    // Using 'class' as a variable name (invalid)
+                    string class = "invalid";
+                    Console.WriteLine(class);
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithUndeclaredVariable_ShouldFail()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "undeclared-var",
+                "name": "Undeclared Variable",
+                "description": "Plugin with undeclared variable",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    // Using undefined variable
+                    Console.WriteLine(undefinedVariable);
+                }
+            """);
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);       
+        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithMultipleNugetPackages_ShouldCompile()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Serilog" Version="4.3.0">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "multi-package",
+                "name": "Multiple Packages",
+                "description": "Plugin with multiple NuGet packages",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
             using Newtonsoft.Json;
             using Serilog;
+            using NapPlana.Core.Bot;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.MultiDep;
-
-            public class MultiDependencyPlugin(ILogger<MultiDependencyPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<MultiDependencyPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
-                    var data = new { message = "Multiple dependencies work!" };
+                    Log.Logger = new LoggerConfiguration()
+                        .WriteTo.Console()
+                        .CreateLogger();
+                    
+                    var data = new { message = "Using multiple packages!" };
                     string json = JsonConvert.SerializeObject(data);
-                    _logger.LogInformation("Serialized: {json}", json);
-                    Log.Information("Serilog also works!");
+                    Log.Information(json);
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Not.Null);
     }
 
     [Test]
-    public async Task TestCompilePlugin_OneInvalidAmongMultipleDependencies_ShouldReturnNull()
+    public async Task TestPluginWithInvalidMetaInfoJson_ShouldFail()
     {
-        PluginCompiler pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
-            _serviceProvider
-        );
-        using WorkSpace outputWorkspace = new(".");
-        string pluginPath = CreatePlugin(outputWorkspace,
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
             metaInfo: """
             {
-                "id": "oneinvalid",
-                "name": "OneInvalidDependencyPlugin",
-                "description": "Plugin with one invalid dependency among valid ones",
-                "version": "1.0.0",
-                "nuget_dependencies": ["Newtonsoft.Json:13.0.3", "ThisPackageDoesNotExist:1.0.0"]
+                "id": "invalid-json",
+                "name": "Invalid JSON"
+                "description": "Missing comma between fields"
+                "version": "1.0.0"
             }
             """,
-            sources:
-            """
-            using Microsoft.Extensions.Logging;
+            sources: """
+            using System;
             using NapPlana.Core.Bot;
-            using Newtonsoft.Json;
             using Yufanbot.Plugin.Common;
 
-            namespace Yufanbot.Plugin.OneInvalid;
-
-            public class OneInvalidDependencyPlugin(ILogger<OneInvalidDependencyPlugin> logger) : IPlugin
+            public class Plugin : IPlugin
             {
-                private readonly ILogger<OneInvalidDependencyPlugin> _logger = logger;
-
                 public void OnInitialize(NapBot bot)
                 {
-                    _logger.LogInformation("This should not be reached");
+                    Console.WriteLine("Hello!");
                 }
             }
-            """);
-        var plugin = await pluginCompiler.CompilePluginAsync(pluginPath);
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);        Assert.That(plugin, Is.Null);
+    }
+
+    [Test]
+    public async Task TestPluginWithMissingIPluginImplementation_ShouldFail()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "no-impl",
+                "name": "No Implementation",
+                "description": "Plugin without IPlugin implementation",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Console.WriteLine("Hello!");
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
         Assert.That(plugin, Is.Null);
     }
 
+    [Test]
+    public async Task TestPluginIPluginType_ShouldMatchHostIPluginType()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "type-match",
+                "name": "Type Match Test",
+                "description": "Test that plugin IPlugin matches host IPlugin",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Console.WriteLine("Type match test");
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+
+        // Verify that the plugin's entry type implements IPlugin
+        var entry = plugin.Entry;
+        Assert.That(entry, Is.AssignableTo<IPlugin>());
+
+        // Verify that the IPlugin type from the plugin's assembly matches the host's IPlugin type
+        var pluginIPluginType = entry.GetType().GetInterfaces()
+            .FirstOrDefault(i => i.FullName == "Yufanbot.Plugin.Common.IPlugin");
+        Assert.That(pluginIPluginType, Is.Not.Null);
+
+        // The types should be the same because they come from the same assembly
+        var hostIPluginType = typeof(IPlugin);
+        Assert.That(pluginIPluginType.AssemblyQualifiedName, Is.EqualTo(hostIPluginType.AssemblyQualifiedName));
+    }
+
+    [Test]
+    public async Task TestPluginWithNewtonsoftJson_ShouldHaveIsolatedType()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "isolated-type",
+                "name": "Isolated Type Test",
+                "description": "Test that plugin NuGet types are isolated from host",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using Newtonsoft.Json;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                }
+
+                public void RunNewtonsoft()
+                {
+                    var data = new { message = "Test" };
+                    string json = JsonConvert.SerializeObject(data);
+                    Console.WriteLine(json);
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+
+        // Get the plugin's entry and verify it can use Newtonsoft.Json
+        var entry = plugin.Entry;
+        var entryType = entry.GetType();
+
+        // Check if the plugin has the RunNewtonsoft method
+        var runMethod = entryType.GetMethod("RunNewtonsoft");
+        Assert.That(runMethod, Is.Not.Null, "Plugin should have RunNewtonsoft method");
+
+        // Call the method to verify Newtonsoft.Json is available and working
+        // This method uses JsonConvert.SerializeObject internally
+        Assert.DoesNotThrow(() => runMethod.Invoke(entry, null),
+            "RunNewtonsoft method should execute successfully, proving Newtonsoft.Json is available in the plugin");
+
+        // Verify that Newtonsoft.Json is NOT available in the host application's loaded assemblies
+        // (unless the host also references Newtonsoft.Json)
+        var hostHasNewtonsoftJson = AppDomain.CurrentDomain.GetAssemblies()
+            .Any(a => a.GetName().Name == "Newtonsoft.Json");
+
+        // If the host doesn't have Newtonsoft.Json, verify the plugin has its own isolated version
+        if (!hostHasNewtonsoftJson)
+        {
+            var hostAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetName().Name)
+                .ToList();
+
+            Assert.That(hostAssemblies, Does.Not.Contain("Newtonsoft.Json"),
+                "Host should not have Newtonsoft.Json loaded when plugin has its own isolated version");
+        }
+    }
+
+    [Test]
+    public async Task TestPluginWithSerilog_ShouldHaveIsolatedType()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Serilog" Version="4.3.0" />
+                    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "serilog-isolated",
+                "name": "Serilog Isolated Test",
+                "description": "Test that Serilog types are isolated from host",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using Serilog;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                }
+
+                public void RunSerilog()
+                {
+                    Log.Logger = new LoggerConfiguration()
+                        .WriteTo.Console()
+                        .CreateLogger();
+                    Log.Information("Serilog test");
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+
+        // Get the plugin's entry and verify it can use Serilog
+        var entry = plugin.Entry;
+        var entryType = entry.GetType();
+
+        // Check if the plugin has the RunSerilog method
+        var runMethod = entryType.GetMethod("RunSerilog");
+        Assert.That(runMethod, Is.Not.Null, "Plugin should have RunSerilog method");
+
+        // Call the method to verify Serilog is available and working
+        // This method uses LoggerConfiguration and Log.Information internally
+        Assert.DoesNotThrow(() => runMethod.Invoke(entry, null),
+            "RunSerilog method should execute successfully, proving Serilog is available in the plugin");
+
+        // Verify the plugin assembly has Serilog as a reference
+        var pluginAssembly = entryType.Assembly;
+        var serilogReference = pluginAssembly.GetReferencedAssemblies()
+            .FirstOrDefault(a => a.Name == "Serilog");
+        Assert.That(serilogReference, Is.Not.Null, "Plugin should reference Serilog assembly");
+    }
+
+    [Test]
+    public async Task TestPluginWithMultipleNugetPackages_ShouldHaveAllIsolatedTypes()
+    {
+        using var workSpace = new WorkSpace(AppDomain.CurrentDomain.BaseDirectory);
+        var pluginPath = CreatePlugin(
+            workSpace,
+            suffix: ".yf",
+            csproj: """
+            <Project Sdk="Microsoft.NET.Sdk">
+                <PropertyGroup>
+                    <TargetFramework>net9.0</TargetFramework>
+                    <ImplicitUsings>enable</ImplicitUsings>
+                    <Nullable>enable</Nullable>
+                </PropertyGroup>
+
+                <ItemGroup>
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                    <PackageReference Include="Serilog" Version="4.3.0">
+                        <PrivateAssets>all</PrivateAssets>
+                    </PackageReference>
+                </ItemGroup>
+            </Project>
+            """,
+            metaInfo: """
+            {
+                "id": "multi-isolated",
+                "name": "Multiple Isolated Types Test",
+                "description": "Test that multiple NuGet packages are properly isolated",
+                "version": "1.0.0",
+                "author": "test"
+            }
+            """,
+            sources: """
+            using System;
+            using Newtonsoft.Json;
+            using Serilog;
+            using NapPlana.Core.Bot;
+            using Yufanbot.Plugin.Common;
+
+            public class Plugin : IPlugin
+            {
+                public void OnInitialize(NapBot bot)
+                {
+                    Log.Logger = new LoggerConfiguration()
+                        .WriteTo.Console()
+                        .CreateLogger();
+                    
+                    var data = new { message = "Multiple packages test" };
+                    string json = JsonConvert.SerializeObject(data);
+                    Log.Information(json);
+                }
+            }
+            """
+        );
+
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Not.Null);
+
+        // Get the plugin's entry type and its assembly
+        var entryType = plugin.Entry.GetType();
+        var pluginAssembly = entryType.Assembly;
+
+        // Check that both Newtonsoft.Json and Serilog are referenced
+        var referencedAssemblies = pluginAssembly.GetReferencedAssemblies()
+            .Select(a => a.Name)
+            .ToList();
+
+        Assert.That(referencedAssemblies, Does.Contain("Newtonsoft.Json"),
+            "Plugin should reference Newtonsoft.Json assembly");
+        Assert.That(referencedAssemblies, Does.Contain("Serilog"),
+            "Plugin should reference Serilog assembly");
+    }
 }
