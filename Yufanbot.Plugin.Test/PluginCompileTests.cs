@@ -172,7 +172,6 @@ public class PluginCompileTests
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
-                        <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
             </Project>
@@ -636,10 +635,8 @@ public class PluginCompileTests
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
-                        <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0">
-                        <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
             </Project>
@@ -1027,10 +1024,8 @@ public class PluginCompileTests
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
-                        <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0">
-                        <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
             </Project>
