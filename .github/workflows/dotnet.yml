@@ -26,8 +26,9 @@ jobs:
       run: dotnet build --no-restore
     - name: Publish NuGet package
       run: |
+        dotnet build $HOME/Yufanbot/Yufanbot/Yufanbot.Plugin.Common -c Release
         mkdir -p $GITHUB_WORKSPACE/LocalFeed
-        cp $HOME/Yufanbot/Yufanbot.Plugin.Common/bin/Release/net9.0/Yufanbot.Plugin.Common.1.1.3.nupkg $GITHUB_WORKSPACE/LocalFeed/
+        cp $HOME/Yufanbot/Yufanbot/Yufanbot.Plugin.Common/bin/Release/net9.0/Yufanbot.Plugin.Common.1.1.3.nupkg $GITHUB_WORKSPACE/LocalFeed/
         dotnet nuget add source $GITHUB_WORKSPACE/LocalFeed --name LocalFeed
     - name: Test
       run: dotnet test --no-build --verbosity normal
