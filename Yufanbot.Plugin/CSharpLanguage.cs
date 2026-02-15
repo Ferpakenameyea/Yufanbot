@@ -34,7 +34,8 @@ internal static class CSharpLanguage
         if (process.ExitCode != 0)
         {
             logger.LogError("failed to publish dlls: compilation failed");
-            logger.LogError("{message}", stdout);
+            logger.LogError("stdout: {message}", stdout);
+            logger.LogError("stderr: {message}", stderr);
             return null;
         }
 

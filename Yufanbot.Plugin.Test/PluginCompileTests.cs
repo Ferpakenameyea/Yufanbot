@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using Serilog;
 using Yufanbot.Config;
 using Yufanbot.Plugin.Common;
 
@@ -17,10 +18,14 @@ public class PluginCompileTests
     [SetUp]
     public void Setup()
     {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .WriteTo.Console()
+            .CreateLogger();
         ServiceCollection services = new();
         services.AddLogging(builder =>
         {
-            builder.ClearProviders();
+            builder.AddSerilog();
         });
         services.AddSingleton(provider =>
         {
@@ -47,7 +52,7 @@ public class PluginCompileTests
         });
         _serviceProvider = services.BuildServiceProvider();
         _pluginCompiler = new(
-            NullLogger<PluginCompiler>.Instance,
+            _serviceProvider.GetRequiredService<ILogger<PluginCompiler>>(),
             _serviceProvider
         );
     }
