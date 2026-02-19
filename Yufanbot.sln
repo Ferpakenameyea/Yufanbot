@@ -1,0 +1,54 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yufanbot.Plugin.Test", "Yufanbot.Plugin.Test\Yufanbot.Plugin.Test.csproj", "{C95F23E4-9C0D-F8C6-1FC6-C7A261B41791}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yufanbot.Plugin.Common", "Yufanbot.Plugin.Common\Yufanbot.Plugin.Common.csproj", "{9EBCC748-23C8-3526-DD46-AE7BFAE5539F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yufanbot.Client", "Yufanbot.Client\Yufanbot.Client.csproj", "{5DCC30F8-038E-D83F-E7A4-7F43B8CA21F6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yufanbot.Plugin", "Yufanbot.Plugin\Yufanbot.Plugin.csproj", "{999B310F-F960-C11B-68B8-3A8F742A55AF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yufanbot.Config", "Yufanbot.Config\Yufanbot.Config.csproj", "{09ED9062-C9BB-713B-92D6-15354DAD7BA6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yufanbot.Config.Test", "Yufanbot.Config.Test\Yufanbot.Config.Test.csproj", "{EBAFEEC7-23F0-A985-CB29-BC701D1F2E63}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C95F23E4-9C0D-F8C6-1FC6-C7A261B41791}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C95F23E4-9C0D-F8C6-1FC6-C7A261B41791}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C95F23E4-9C0D-F8C6-1FC6-C7A261B41791}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C95F23E4-9C0D-F8C6-1FC6-C7A261B41791}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9EBCC748-23C8-3526-DD46-AE7BFAE5539F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EBCC748-23C8-3526-DD46-AE7BFAE5539F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EBCC748-23C8-3526-DD46-AE7BFAE5539F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EBCC748-23C8-3526-DD46-AE7BFAE5539F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DCC30F8-038E-D83F-E7A4-7F43B8CA21F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DCC30F8-038E-D83F-E7A4-7F43B8CA21F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DCC30F8-038E-D83F-E7A4-7F43B8CA21F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DCC30F8-038E-D83F-E7A4-7F43B8CA21F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{999B310F-F960-C11B-68B8-3A8F742A55AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{999B310F-F960-C11B-68B8-3A8F742A55AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{999B310F-F960-C11B-68B8-3A8F742A55AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{999B310F-F960-C11B-68B8-3A8F742A55AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09ED9062-C9BB-713B-92D6-15354DAD7BA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09ED9062-C9BB-713B-92D6-15354DAD7BA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09ED9062-C9BB-713B-92D6-15354DAD7BA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09ED9062-C9BB-713B-92D6-15354DAD7BA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBAFEEC7-23F0-A985-CB29-BC701D1F2E63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBAFEEC7-23F0-A985-CB29-BC701D1F2E63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBAFEEC7-23F0-A985-CB29-BC701D1F2E63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBAFEEC7-23F0-A985-CB29-BC701D1F2E63}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D939D806-3137-4DB8-991B-E1854230F7EB}
+	EndGlobalSection
+EndGlobal

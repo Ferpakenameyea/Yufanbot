@@ -10,7 +10,6 @@ using Yufanbot.Plugin.Common;
 namespace Yufanbot.Plugin.Test;
 
 [TestFixture]
-[NonParallelizable]
 public class PluginCompileTests
 {
     private ServiceProvider _serviceProvider;
@@ -638,6 +637,7 @@ public class PluginCompileTests
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0">
                     </PackageReference>
+                    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
                 </ItemGroup>
             </Project>
             """,
@@ -1027,6 +1027,7 @@ public class PluginCompileTests
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0">
                     </PackageReference>
+                    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
                 </ItemGroup>
             </Project>
             """,
