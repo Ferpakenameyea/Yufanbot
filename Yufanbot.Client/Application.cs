@@ -1,11 +1,15 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NapPlana.Core.Bot;
-using Newtonsoft.Json;
+using NapPlana.Core.Data.Event.Message;
+using NapPlana.Core.Event.Handler;
+using Nexora.Command.Tree;
 using Yufanbot.Client.Config;
 using Yufanbot.Config;
 using Yufanbot.Plugin;
 using Yufanbot.Plugin.Common;
+using Yufanbot.Plugin.Common.Registration;
 
 namespace Yufanbot.Client;
 
@@ -18,8 +22,9 @@ public sealed class Application
     private readonly List<YFPlugin> _plugins = [];
     private readonly IPluginCompiler _pluginCompiler; 
     private readonly Lock _pluginCollectionLock = new();
+    private readonly RootNode _commandTreeRoot = new();
 
-    public Application(ServiceProvider services)
+    public Application(IServiceProvider services)
     {
         _logger = services.GetRequiredService<ILoggerFactory>().CreateLogger<Application>();        
         _pluginCompiler = services.GetRequiredService<IPluginCompiler>();
@@ -81,24 +86,87 @@ public sealed class Application
                     plugin.Meta.Version);
             }
         }
+
         await _bot.StartAsync();
-        foreach (var plugin in _plugins)
-        {
-            try
-            {
-                plugin.Entry.OnInitialize(_bot);
-                await plugin.Entry.OnInitializeAsync(_bot);
-            }
-            catch (Exception e)
-            {
-                _logger.LogCritical(e, "Plugin {plugin} initialization failed!", plugin.Meta.Id);
-                throw;
-            }
-        }
+        await InitializePluginsAsync();
+
+        RegisterEvents();
+        RegisterCommands();
         
         while (true)
         {
             await Task.Delay(200);
         }
+    }
+
+
+    private void RegisterCommands()
+    {
+        foreach (var plugin in _plugins)
+        {
+            try
+            {
+                plugin.Entry.RegisterCommands(_commandTreeRoot);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed to register commands for plugin '{pluginName}' (id: {pluginId})",
+                    plugin.Meta.Name,
+                    plugin.Meta.Id);
+            }
+        }
+    }
+
+    private void RegisterEvents()
+    {
+        var registerGroups = 
+            _plugins.SelectMany(plugin => 
+                from m in plugin.Entry.GetType()
+                            .GetMethods(
+                                BindingFlags.Static | 
+                                BindingFlags.Instance | 
+                                BindingFlags.Public |
+                                BindingFlags.NonPublic)
+                let attr = m.GetCustomAttribute<ListenToEventAttribute>()
+                where attr is not null
+                select (
+                    Listener: m, 
+                    Attribute: attr,
+                    Instance: plugin.Entry
+                )
+            ).GroupBy(r => r.Attribute.RegisterEventType);
+        
+        foreach (var group in registerGroups)
+        {
+            switch (group.Key)
+            {
+                case EventType.GroupMessage:
+                    BotEventHandler.OnGroupMessageReceived += 
+                        MessageDispatching.BuildEventDispatcher<GroupMessageEvent>(
+                            group,
+                            _logger,
+                            _coreConfig,
+                            _commandTreeRoot);
+                    break;
+                case EventType.PrivateMessage:
+                    BotEventHandler.OnPrivateMessageReceived += 
+                        MessageDispatching.BuildEventDispatcher<PrivateMessageEvent>(
+                            group,
+                            _logger,
+                            _coreConfig,
+                            _commandTreeRoot);
+                    break;
+            }
+        }
+    }
+
+    private async Task InitializePluginsAsync()
+    {
+        foreach (var plugin in _plugins)
+        {
+            plugin.Entry.OnInitialize();
+        }
+
+        await Task.WhenAll(_plugins.Select(p => p.Entry.OnInitializeAsync()));
     }
 }

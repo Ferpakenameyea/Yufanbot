@@ -27,4 +27,8 @@
     <ProjectReference Include="..\Yufanbot.Plugin\Yufanbot.Plugin.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0" />
+  </ItemGroup>
+
 </Project>
