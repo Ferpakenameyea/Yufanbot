@@ -10,7 +10,6 @@ using Yufanbot.Plugin.Common;
 namespace Yufanbot.Plugin.Test;
 
 [TestFixture]
-[NonParallelizable]
 public class PluginCompileTests
 {
     private ServiceProvider _serviceProvider;
