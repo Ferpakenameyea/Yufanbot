@@ -3,9 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NapPlana.Core.Bot;
 using NapPlana.Core.Data.Event.Message;
-using NapPlana.Core.Event.Handler;
 using Nexora.Command.Tree;
 using Yufanbot.Client.Config;
+using Yufanbot.Client.Event;
 using Yufanbot.Config;
 using Yufanbot.Plugin;
 using Yufanbot.Plugin.Common;
@@ -23,6 +23,7 @@ public sealed class Application
     private readonly IPluginCompiler _pluginCompiler; 
     private readonly Lock _pluginCollectionLock = new();
     private readonly RootNode _commandTreeRoot = new();
+    private readonly IBotEventProvider _botEventProvider;
 
     public Application(IServiceProvider services)
     {
@@ -30,6 +31,7 @@ public sealed class Application
         _pluginCompiler = services.GetRequiredService<IPluginCompiler>();
         try
         {
+            _botEventProvider = services.GetRequiredService<IBotEventProvider>();
             _configProvider = services.GetRequiredService<IConfigProvider>();
             _coreConfig = _configProvider.Resolve<CoreConfig>();
             _bot = PlanaBotFactory.Create()
@@ -141,7 +143,7 @@ public sealed class Application
             switch (group.Key)
             {
                 case EventType.GroupMessage:
-                    BotEventHandler.OnGroupMessageReceived += 
+                    _botEventProvider.OnGroupMessageReceived += 
                         MessageDispatching.BuildEventDispatcher<GroupMessageEvent>(
                             group,
                             _logger,
@@ -149,7 +151,7 @@ public sealed class Application
                             _commandTreeRoot);
                     break;
                 case EventType.PrivateMessage:
-                    BotEventHandler.OnPrivateMessageReceived += 
+                    _botEventProvider.OnPrivateMessageReceived += 
                         MessageDispatching.BuildEventDispatcher<PrivateMessageEvent>(
                             group,
                             _logger,
