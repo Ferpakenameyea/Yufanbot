@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NapPlana.Core.Bot;
 using NapPlana.Core.Data.Event.Message;
 using Nexora.Command.Tree;
+using Yufanbot.Client.BotEngine;
 using Yufanbot.Client.Config;
 using Yufanbot.Client.Event;
 using Yufanbot.Config;
@@ -17,7 +18,7 @@ public sealed class Application
 {
     private readonly IConfigProvider _configProvider;
     private readonly CoreConfig _coreConfig;
-    private readonly NapBot _bot;
+    private readonly IBotEngine _bot;
     private readonly ILogger<Application> _logger;
     private readonly List<YFPlugin> _plugins = [];
     private readonly IPluginCompiler _pluginCompiler; 
@@ -34,13 +35,7 @@ public sealed class Application
             _botEventProvider = services.GetRequiredService<IBotEventProvider>();
             _configProvider = services.GetRequiredService<IConfigProvider>();
             _coreConfig = _configProvider.Resolve<CoreConfig>();
-            _bot = PlanaBotFactory.Create()
-                .SetSelfId(_coreConfig.SelfId)
-                .SetConnectionType(NapPlana.Core.Data.BotConnectionType.WebSocketClient)
-                .SetIp(_coreConfig.NapcatIP)
-                .SetPort(_coreConfig.NapcatPort)
-                .SetToken(_coreConfig.NapcatToken)
-                .Build();
+            _bot = services.GetRequiredService<IBotEngine>();
         } 
         catch (Exception e)
         {
