@@ -61,7 +61,7 @@ public class ConfigProviderTests
     }
 
     [Test]
-    public void Resolve_GenericMethod_ShouldReturnDifferentInstances()
+    public void Resolve_GenericMethod_ShouldReturnSameInstance()
     {
         // Arrange
         var serviceProvider = CreateServiceProvider();
@@ -78,7 +78,7 @@ public class ConfigProviderTests
             Assert.That(config2, Is.Not.Null);
         });
 
-        Assert.That(config1, Is.Not.SameAs(config2));
+        Assert.That(config1, Is.SameAs(config2));
     }
 
     [Test]
@@ -119,7 +119,7 @@ public class ConfigProviderTests
     }
 
     [Test]
-    public void Resolve_NonGenericMethod_ShouldReturnDifferentInstances()
+    public void Resolve_NonGenericMethod_ShouldReturnCachedInstance()
     {
         // Arrange
         var serviceProvider = CreateServiceProvider();
@@ -136,7 +136,7 @@ public class ConfigProviderTests
             Assert.That(config2, Is.Not.Null);
         });
 
-        Assert.That(config1, Is.Not.SameAs(config2));
+        Assert.That(config1, Is.SameAs(config2));
     }
 
     [Test]
