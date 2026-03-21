@@ -117,7 +117,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -134,14 +134,18 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello, world!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -167,7 +171,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
@@ -187,16 +191,20 @@ public class PluginCompileTests
             sources: """
             using System;
             using Newtonsoft.Json;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     var data = new { message = "Hello from Newtonsoft.Json!" };
                     string json = JsonConvert.SerializeObject(data);
                     Console.WriteLine(json);
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -222,7 +230,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -235,14 +243,18 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -268,7 +280,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -277,14 +289,18 @@ public class PluginCompileTests
             metaInfo: null,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -310,7 +326,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -327,12 +343,12 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     // Missing closing parenthesis
                     Console.WriteLine("Hello!"
@@ -364,14 +380,18 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -406,14 +426,18 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -450,20 +474,25 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
         );
 
-        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);        Assert.That(plugin, Is.Null);
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
     }
 
     [Test]
@@ -482,7 +511,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -499,19 +528,20 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
                 // Missing closing brace for class
             """
         );
 
-        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);        Assert.That(plugin, Is.Null);
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
     }
 
     [Test]
@@ -530,7 +560,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -547,12 +577,12 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     // Using 'class' as a variable name (invalid)
                     string class = "invalid";
@@ -582,7 +612,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -599,12 +629,12 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     // Using undefined variable
                     Console.WriteLine(undefinedVariable);
@@ -630,14 +660,15 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0">
                     </PackageReference>
-                    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+                    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1">
+                    </PackageReference>
                 </ItemGroup>
             </Project>
             """,
@@ -654,12 +685,12 @@ public class PluginCompileTests
             using System;
             using Newtonsoft.Json;
             using Serilog;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Log.Logger = new LoggerConfiguration()
                         .WriteTo.Console()
@@ -668,6 +699,10 @@ public class PluginCompileTests
                     var data = new { message = "Using multiple packages!" };
                     string json = JsonConvert.SerializeObject(data);
                     Log.Information(json);
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -693,7 +728,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -709,20 +744,25 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
         );
 
-        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);        Assert.That(plugin, Is.Null);
+        var plugin = await _pluginCompiler.CompilePluginAsync(pluginPath);
+        Assert.That(plugin, Is.Null);
     }
 
     [Test]
@@ -741,7 +781,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -758,12 +798,12 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Hello!");
                 }
@@ -791,7 +831,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                 </ItemGroup>
@@ -808,14 +848,18 @@ public class PluginCompileTests
             """,
             sources: """
             using System;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Console.WriteLine("Type match test");
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """
@@ -854,7 +898,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
@@ -873,12 +917,16 @@ public class PluginCompileTests
             sources: """
             using System;
             using Newtonsoft.Json;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
+                {
+                }
+
+                public void RegisterCommands(RootNode root)
                 {
                 }
 
@@ -941,7 +989,7 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0" />
@@ -961,12 +1009,16 @@ public class PluginCompileTests
             sources: """
             using System;
             using Serilog;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
+                {
+                }
+
+                public void RegisterCommands(RootNode root)
                 {
                 }
 
@@ -1020,14 +1072,15 @@ public class PluginCompileTests
                 </PropertyGroup>
 
                 <ItemGroup>
-                    <PackageReference Include="Yufanbot.Plugin.Common" Version="1.1.3">
+                    <PackageReference Include="Yufanbot.Plugin.Common" Version="2.0.0">
                         <PrivateAssets>all</PrivateAssets>
                     </PackageReference>
                     <PackageReference Include="Newtonsoft.Json" Version="13.0.4">
                     </PackageReference>
                     <PackageReference Include="Serilog" Version="4.3.0">
                     </PackageReference>
-                    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+                    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1">
+                    </PackageReference>
                 </ItemGroup>
             </Project>
             """,
@@ -1044,12 +1097,12 @@ public class PluginCompileTests
             using System;
             using Newtonsoft.Json;
             using Serilog;
-            using NapPlana.Core.Bot;
+            using Nexora.Command.Tree;
             using Yufanbot.Plugin.Common;
 
             public class Plugin : IPlugin
             {
-                public void OnInitialize(NapBot bot)
+                public void OnInitialize()
                 {
                     Log.Logger = new LoggerConfiguration()
                         .WriteTo.Console()
@@ -1058,6 +1111,10 @@ public class PluginCompileTests
                     var data = new { message = "Multiple packages test" };
                     string json = JsonConvert.SerializeObject(data);
                     Log.Information(json);
+                }
+
+                public void RegisterCommands(RootNode root)
+                {
                 }
             }
             """

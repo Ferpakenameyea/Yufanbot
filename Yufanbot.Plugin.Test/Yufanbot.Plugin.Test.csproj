@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Yufanbot.Plugin\Yufanbot.Plugin.csproj" />
+    <ProjectReference Include="..\Yufanbot.Plugin.Common\Yufanbot.Plugin.Common.csproj" />
   </ItemGroup>
 
 </Project>

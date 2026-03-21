@@ -1,11 +1,16 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NapPlana.Core.Bot;
-using Newtonsoft.Json;
+using NapPlana.Core.Data.Event.Message;
+using Nexora.Command.Tree;
+using Yufanbot.Client.BotEngine;
 using Yufanbot.Client.Config;
+using Yufanbot.Client.Event;
 using Yufanbot.Config;
 using Yufanbot.Plugin;
 using Yufanbot.Plugin.Common;
+using Yufanbot.Plugin.Common.Registration;
 
 namespace Yufanbot.Client;
 
@@ -13,27 +18,24 @@ public sealed class Application
 {
     private readonly IConfigProvider _configProvider;
     private readonly CoreConfig _coreConfig;
-    private readonly NapBot _bot;
+    private readonly IBotEngine _bot;
     private readonly ILogger<Application> _logger;
     private readonly List<YFPlugin> _plugins = [];
     private readonly IPluginCompiler _pluginCompiler; 
     private readonly Lock _pluginCollectionLock = new();
+    private readonly RootNode _commandTreeRoot = new();
+    private readonly IBotEventProvider _botEventProvider;
 
-    public Application(ServiceProvider services)
+    public Application(IServiceProvider services)
     {
         _logger = services.GetRequiredService<ILoggerFactory>().CreateLogger<Application>();        
         _pluginCompiler = services.GetRequiredService<IPluginCompiler>();
         try
         {
+            _botEventProvider = services.GetRequiredService<IBotEventProvider>();
             _configProvider = services.GetRequiredService<IConfigProvider>();
             _coreConfig = _configProvider.Resolve<CoreConfig>();
-            _bot = PlanaBotFactory.Create()
-                .SetSelfId(_coreConfig.SelfId)
-                .SetConnectionType(NapPlana.Core.Data.BotConnectionType.WebSocketClient)
-                .SetIp(_coreConfig.NapcatIP)
-                .SetPort(_coreConfig.NapcatPort)
-                .SetToken(_coreConfig.NapcatToken)
-                .Build();
+            _bot = services.GetRequiredService<IBotEngine>();
         } 
         catch (Exception e)
         {
@@ -81,24 +83,87 @@ public sealed class Application
                     plugin.Meta.Version);
             }
         }
+
         await _bot.StartAsync();
-        foreach (var plugin in _plugins)
-        {
-            try
-            {
-                plugin.Entry.OnInitialize(_bot);
-                await plugin.Entry.OnInitializeAsync(_bot);
-            }
-            catch (Exception e)
-            {
-                _logger.LogCritical(e, "Plugin {plugin} initialization failed!", plugin.Meta.Id);
-                throw;
-            }
-        }
+        await InitializePluginsAsync();
+
+        RegisterEvents();
+        RegisterCommands();
         
         while (true)
         {
             await Task.Delay(200);
         }
+    }
+
+
+    private void RegisterCommands()
+    {
+        foreach (var plugin in _plugins)
+        {
+            try
+            {
+                plugin.Entry.RegisterCommands(_commandTreeRoot);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed to register commands for plugin '{pluginName}' (id: {pluginId})",
+                    plugin.Meta.Name,
+                    plugin.Meta.Id);
+            }
+        }
+    }
+
+    private void RegisterEvents()
+    {
+        var registerGroups = 
+            _plugins.SelectMany(plugin => 
+                from m in plugin.Entry.GetType()
+                            .GetMethods(
+                                BindingFlags.Static | 
+                                BindingFlags.Instance | 
+                                BindingFlags.Public |
+                                BindingFlags.NonPublic)
+                let attr = m.GetCustomAttribute<ListenToEventAttribute>()
+                where attr is not null
+                select (
+                    Listener: m, 
+                    Attribute: attr,
+                    Instance: plugin.Entry
+                )
+            ).GroupBy(r => r.Attribute.RegisterEventType);
+        
+        foreach (var group in registerGroups)
+        {
+            switch (group.Key)
+            {
+                case EventType.GroupMessage:
+                    _botEventProvider.OnGroupMessageReceived += 
+                        MessageDispatching.BuildEventDispatcher<GroupMessageEvent>(
+                            group,
+                            _logger,
+                            _coreConfig,
+                            _commandTreeRoot);
+                    break;
+                case EventType.PrivateMessage:
+                    _botEventProvider.OnPrivateMessageReceived += 
+                        MessageDispatching.BuildEventDispatcher<PrivateMessageEvent>(
+                            group,
+                            _logger,
+                            _coreConfig,
+                            _commandTreeRoot);
+                    break;
+            }
+        }
+    }
+
+    private async Task InitializePluginsAsync()
+    {
+        foreach (var plugin in _plugins)
+        {
+            plugin.Entry.OnInitialize();
+        }
+
+        await Task.WhenAll(_plugins.Select(p => p.Entry.OnInitializeAsync()));
     }
 }

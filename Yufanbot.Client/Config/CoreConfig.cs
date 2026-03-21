@@ -20,4 +20,10 @@ public class CoreConfig(ILogger<CoreConfig> logger, IFileReader fileReader, IEnv
 
     [ConfigEntry("plugin.directory", ConfigEntryGetType.FromConfigFile)]
     public string PluginDirectory { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
+
+    [ConfigEntry("plugin.show_methods_registration", ConfigEntryGetType.FromConfigFile)]
+    public bool ShowConfigRegistration { get; set; } = false;
+
+    [ConfigEntry("plugin.commands.prefix", ConfigEntryGetType.FromConfigFile)]
+    public string CommandPrefix { get; set; } = ":";
 }
