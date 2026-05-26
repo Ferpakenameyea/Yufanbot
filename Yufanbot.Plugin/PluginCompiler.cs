@@ -13,6 +13,8 @@ public sealed class PluginCompiler : IPluginCompiler
     private readonly string cacheRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".plugincache");
     private readonly ILogger<PluginCompiler> _logger;
     private readonly IServiceProvider _serviceProvider;
+    // NOTE: this config originally provides nuget source list. But is unused now.
+    //       Reserved for future use.
     private readonly PluginCompilerConfig _config;
 
     public PluginCompiler(
