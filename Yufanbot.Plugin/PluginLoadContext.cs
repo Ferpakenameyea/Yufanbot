@@ -7,7 +7,7 @@ internal class PluginLoadContext : AssemblyLoadContext
     private readonly ReadOnlyDictionary<string, byte[]> _privateDllBytes;
     private readonly string _pluginRoot;
 
-    private static readonly string[] SharedDlls =
+    private static readonly string[] _sharedDlls =
     [
         "Yufanbot.Plugin.Common",
         "Microsoft.Extensions.Logging.Abstractions",
@@ -28,7 +28,7 @@ internal class PluginLoadContext : AssemblyLoadContext
             {
                 continue;
             }
-            if (SharedDlls.Contains(nameWithoutExt))
+            if (_sharedDlls.Contains(nameWithoutExt))
             {
                 continue;
             }
@@ -41,7 +41,7 @@ internal class PluginLoadContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName assemblyName)
     {
-        if (assemblyName.Name != null && SharedDlls.Contains(assemblyName.Name))
+        if (assemblyName.Name != null && _sharedDlls.Contains(assemblyName.Name))
         {
             var loaded = AppDomain.CurrentDomain.GetAssemblies()
                 .FirstOrDefault(a => a.GetName().FullName == assemblyName.FullName);
@@ -49,6 +49,8 @@ internal class PluginLoadContext : AssemblyLoadContext
             {
                 return loaded; 
             }
+            throw new Exception(
+                $"Unexpected: shared assembly with name {assemblyName.Name} doesn't exist in current application.");
         }
 
         if (_privateDllBytes.TryGetValue(assemblyName.Name!, out var bytes))
