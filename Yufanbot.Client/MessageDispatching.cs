@@ -84,7 +84,7 @@ internal static class MessageDispatching
         {
             var names = invokeList.Select(invoke => " - " + invoke.Method.Name);
             var display = string.Join(",\n", names);
-            logger.LogInformation("Registration result group:\n{}", display);
+            logger.LogInformation("Registration result group:\n{result}", display);
         }
 
         return e =>
@@ -122,8 +122,8 @@ internal static class MessageDispatching
         if (parameters.Length != 1 || !parameters[0].ParameterType.IsAssignableFrom(typeof(T)))
         {
             logger.LogError(
-                "Registration failed: Method '{}'(from assembly '{}', in class '{}') " + 
-                "should have only exactly one parameter and should have type of {}!",
+                "Registration failed: Method '{methodName}'(from assembly '{assemblyName}', in class '{className}') " + 
+                "should have only exactly one parameter and should have type of {expectedTypeName}!",
                 method.Name,
                 method.DeclaringType?.Assembly.FullName,
                 method.DeclaringType?.FullName,
@@ -134,7 +134,7 @@ internal static class MessageDispatching
         if (method.ReturnType != typeof(bool))
         {
             logger.LogError(
-                "Registration failed: Method '{}'(from assembly '{}', in class '{}') " + 
+                "Registration failed: Method '{methodName}'(from assembly '{assemblyName}', in class '{className}') " + 
                 "should return bool!",
                 method.Name,
                 method.DeclaringType?.Assembly.FullName,
@@ -143,7 +143,8 @@ internal static class MessageDispatching
         }
         try
         {
-            if (method.IsStatic) {
+            if (method.IsStatic) 
+            {
                 return method.CreateDelegate<Func<T, bool>>();
             }
 
@@ -153,7 +154,7 @@ internal static class MessageDispatching
         {
             logger.LogError(ex, 
                 "Method bind failed: Cannot create an instance of delegate of method" + 
-                " '{}'(from assembly '{}', in class '{}')",
+                " '{methodName}'(from assembly '{assemblyName}', in class '{className}')",
                 method.Name,
                 method.DeclaringType?.Assembly.FullName,
                 method.DeclaringType?.FullName);
