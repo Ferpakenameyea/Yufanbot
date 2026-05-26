@@ -49,7 +49,7 @@ public sealed class PluginCompiler : IPluginCompiler
             }
             catch (Exception e)
             {
-                logger.LogWarning("Exception when trying to delete {filename} in compiler cache: {message}", f.Name, e.Message);
+                _logger.LogWarning("Exception when trying to delete {filename} in compiler cache: {message}", f.Name, e.Message);
             }
         }
     }
