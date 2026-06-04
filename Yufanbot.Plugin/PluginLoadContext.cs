@@ -9,7 +9,11 @@ internal class PluginLoadContext : AssemblyLoadContext
 
     private static readonly string[] _sharedDlls =
     [
+        "Nexora.Command",
+        "NapPlana.NET",
+        "NapPlana.Net.Core",
         "Yufanbot.Plugin.Common",
+        "Yufanbot.Config",
         "Microsoft.Extensions.Logging.Abstractions",
         "Microsoft.Extensions.DependencyInjection.Abstractions"
     ];
@@ -44,10 +48,10 @@ internal class PluginLoadContext : AssemblyLoadContext
         if (assemblyName.Name != null && _sharedDlls.Contains(assemblyName.Name))
         {
             var loaded = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().FullName == assemblyName.FullName);
-            if (loaded != null) 
+                .FirstOrDefault(a => a.GetName().Name == assemblyName.Name);
+            if (loaded != null)
             {
-                return loaded; 
+                return loaded;
             }
             throw new Exception(
                 $"Unexpected: shared assembly with name {assemblyName.Name} doesn't exist in current application.");

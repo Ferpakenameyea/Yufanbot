@@ -1,5 +1,6 @@
-
 using NapPlana.Core.Bot;
+using NapPlana.Core.Bot.BotInstance;
+using NapPlana.Core.Data.API;
 using Yufanbot.Client.Config;
 using Yufanbot.Config;
 
@@ -21,5 +22,9 @@ internal sealed class NapcatBotEngine : IBotEngine
             .Build();
     }
 
+#pragma warning disable CS0618
     public Task StartAsync() => _napBot.StartAsync();
+#pragma warning restore CS0618
+    public Task SendGroupMessageAsync(GroupMessageSend message) => _napBot.SendGroupMessageAsync(message);
+    public Task SendPrivateMessageAsync(PrivateMessageSend message) => _napBot.SendPrivateMessageAsync(message);
 }

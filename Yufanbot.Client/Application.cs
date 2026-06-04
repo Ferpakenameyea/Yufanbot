@@ -1,8 +1,15 @@
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NapPlana.Core.Bot;
+using NapPlana.Core.Data.API;
 using NapPlana.Core.Data.Event.Message;
+using NapPlana.Core.Data.Message;
+using Nexora.Command;
+using Nexora.Command.Executor;
 using Nexora.Command.Tree;
 using Yufanbot.Client.BotEngine;
 using Yufanbot.Client.Config;
@@ -11,6 +18,9 @@ using Yufanbot.Config;
 using Yufanbot.Plugin;
 using Yufanbot.Plugin.Common;
 using Yufanbot.Plugin.Common.Registration;
+
+using static Nexora.Command.Tree.CommandTreeNode;
+using static Yufanbot.Plugin.Common.IPlugin;
 
 namespace Yufanbot.Client;
 
@@ -23,8 +33,13 @@ public sealed class Application
     private readonly List<YFPlugin> _plugins = [];
     private readonly IPluginCompiler _pluginCompiler; 
     private readonly Lock _pluginCollectionLock = new();
-    private readonly RootNode _commandTreeRoot = new();
+    private RootNode _commandTreeRoot = new();
+    private CommandLocator _commandLocator = null!;
     private readonly IBotEventProvider _botEventProvider;
+    public readonly Version BotVersion = new(major: 1, minor: 1, build: 0);
+
+    private event Action<GroupMessageEvent>? OnNonCommandGroupMessageReceived;
+    private event Action<PrivateMessageEvent>? OnNonCommandPrivateMessageReceived;
 
     public Application(IServiceProvider services)
     {
@@ -89,6 +104,9 @@ public sealed class Application
 
         RegisterEvents();
         RegisterCommands();
+
+        _botEventProvider.OnGroupMessageReceived += OnRawGroupMessageReceived;
+        _botEventProvider.OnPrivateMessageReceived += OnRawPrivateMessageReceived;
         
         while (true)
         {
@@ -112,6 +130,10 @@ public sealed class Application
                     plugin.Meta.Id);
             }
         }
+
+        RegisterSystemCommands();
+
+        _commandLocator = new(_commandTreeRoot.Freeze());
     }
 
     private void RegisterEvents()
@@ -138,7 +160,7 @@ public sealed class Application
             switch (group.Key)
             {
                 case EventType.GroupMessage:
-                    _botEventProvider.OnGroupMessageReceived += 
+                    OnNonCommandGroupMessageReceived += 
                         MessageDispatching.BuildEventDispatcher<GroupMessageEvent>(
                             group,
                             _logger,
@@ -146,7 +168,7 @@ public sealed class Application
                             _commandTreeRoot);
                     break;
                 case EventType.PrivateMessage:
-                    _botEventProvider.OnPrivateMessageReceived += 
+                    OnNonCommandPrivateMessageReceived += 
                         MessageDispatching.BuildEventDispatcher<PrivateMessageEvent>(
                             group,
                             _logger,
@@ -155,6 +177,113 @@ public sealed class Application
                     break;
             }
         }
+    }
+    private void RegisterSystemCommands()
+    {
+        // TODO: register system commands
+    }
+
+    private bool IsCommand(MessageEventBase @event, [NotNullWhen(true)] out string? command)
+    {
+        if (@event.Messages[0]?.MessageData is TextMessageData textData &&
+            textData.Text.StartsWith(_coreConfig.CommandPrefix))
+        {
+            var commandText = textData.Text[_coreConfig.CommandPrefix.Length..];
+            if (!string.IsNullOrWhiteSpace(commandText))
+            {
+                command = commandText;
+                return true;
+            }
+        }
+
+        command = null;
+        return false;
+    }
+
+    private bool TryExecuteCommand(MessageEventBase @event, string senderId, string type, string? groupId = null)
+    {
+        if (!IsCommand(@event, out var command))
+        {
+            return false;
+        }
+
+        try
+        {
+            var lexer = new CommandLexer(command);
+            var callback = _commandLocator.Locate(lexer);
+            if (callback is null)
+            {
+                _logger.LogError("Command: {raw} not found!",
+                    command);
+                return true;
+            }
+
+            callback.Value.args[MessageTypeEventArg] = type;
+            callback.Value.args[SenderIdEventArg] = senderId;
+
+            if (groupId is not null)
+            {
+                callback.Value.args[GroupIdEventArg] = groupId;
+            }
+
+            var result = callback.Value.Invoke();
+            if (!result.IsSuccess)
+            {
+                _logger.LogError(result.Error, "Failed in command {raw} execution", command);
+            }
+            return true;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Unexpected exception in command {raw} execution", command);
+            return false;
+        }
+    }
+
+    private void OnRawGroupMessageReceived(GroupMessageEvent @event)
+    {
+        Task.Run(() =>
+        {
+            if (TryExecuteCommand(@event,
+                    senderId: @event.Sender.UserId.ToString(),
+                    type: GroupMessageTypeValue,
+                    groupId: @event.GroupId.ToString()))
+            {
+                return;
+            }
+
+            try
+            {
+                OnNonCommandGroupMessageReceived?.Invoke(@event);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Exception in handling message");
+            }
+        });
+    }
+
+    private void OnRawPrivateMessageReceived(PrivateMessageEvent @event)
+    {
+        Task.Run(() =>
+        {
+            if (TryExecuteCommand(@event,
+                    senderId: @event.Sender.UserId.ToString(),
+                    type: PrivateMessageTypeValue,
+                    groupId: null))
+            {
+                return;
+            }
+
+            try
+            {
+                OnNonCommandPrivateMessageReceived?.Invoke(@event);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Exception in handling message");
+            }
+        });
     }
 
     private async Task InitializePluginsAsync()
@@ -166,4 +295,5 @@ public sealed class Application
 
         await Task.WhenAll(_plugins.Select(p => p.Entry.OnInitializeAsync()));
     }
+
 }

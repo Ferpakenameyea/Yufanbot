@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -107,14 +108,14 @@ public sealed class PluginCompiler : IPluginCompiler
             return null;
         }
 
-        var pluginAssembly = await Compile(workSpace, meta, fileInfo);
-        if (pluginAssembly == null)
+        var result = await Compile(workSpace, meta, fileInfo);
+        if (result == null)
         {
             _logger.LogError("Failed to load {pluginname}.", fileInfo.Name);
             return null;
         }
 
-        return TryCreatePluginEntry(fileInfo, meta, pluginAssembly);
+        return TryCreatePluginEntry(fileInfo, meta, result.Value.assembly, result.Value.loadContext);
     }
 
     private static bool IsValidMeta(PluginMeta meta)
@@ -122,7 +123,7 @@ public sealed class PluginCompiler : IPluginCompiler
         return !string.IsNullOrWhiteSpace(meta.Id);
     }
 
-    private YFPlugin? TryCreatePluginEntry(FileInfo fileInfo, PluginMeta meta, Assembly pluginAssembly)
+    private YFPlugin? TryCreatePluginEntry(FileInfo fileInfo, PluginMeta meta, Assembly pluginAssembly, AssemblyLoadContext loadContext)
     {
         Type? entry = null;
         try
@@ -140,7 +141,7 @@ public sealed class PluginCompiler : IPluginCompiler
 
             IPlugin instance = (ActivatorUtilities.CreateInstance(_serviceProvider, entry) as IPlugin)!;
 
-            return new(Entry: instance, Meta: meta);
+            return new(Entry: instance, Meta: meta, FileName: fileInfo.Name) { LoadContext = loadContext } ;
         }
         catch (InvalidOperationException e)
         {
@@ -190,7 +191,7 @@ public sealed class PluginCompiler : IPluginCompiler
         return true;
     }
 
-    private async Task<Assembly?> Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo)
+    private async Task<(Assembly assembly, AssemblyLoadContext loadContext)?> Compile(WorkSpace workSpace, PluginMeta meta, FileInfo pluginFileInfo)
     {
         FileInfo? csprojFile;
         try
@@ -220,7 +221,7 @@ public sealed class PluginCompiler : IPluginCompiler
 
         Assembly assembly = context.LoadEntryAssembly(mainDllPath);
 
-        return assembly;
+        return (assembly, context);
     }
 
     private PluginMeta? GetMeta(WorkSpace workSpace)
